@@ -26,6 +26,7 @@ import net.minecraft.util.registry.Registry;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkSection;
+import net.minecraft.world.dimension.DimensionType;
 import xyz.wagyourtail.jsmacros.client.access.IBossBarHud;
 import xyz.wagyourtail.jsmacros.client.access.IPlayerListHud;
 import xyz.wagyourtail.jsmacros.client.api.helpers.*;
@@ -307,7 +308,7 @@ public class FWorld extends BaseLibrary {
      */
     public String getDimension() {
         assert mc.world != null;
-        return mc.world.getRegistryKey().getValue().toString();
+        return DimensionType.getId(mc.world.getDimension().getType()).toString();
     }
     
     /**
@@ -316,7 +317,8 @@ public class FWorld extends BaseLibrary {
      */
     public String getBiome() {
         assert mc.world != null;
-        return mc.world.getRegistryManager().get(Registry.BIOME_KEY).getId(mc.world.getBiome(mc.player.getBlockPos())).toString();
+        assert mc.player != null;
+        return Registry.BIOME.getId(mc.world.getBiome(mc.player.getBlockPos())).toString();
     }
     
     /**
@@ -345,8 +347,7 @@ public class FWorld extends BaseLibrary {
      */
     public BlockPosHelper getRespawnPos() {
         assert mc.world != null;
-        if (mc.world.getDimension().isNatural()) return new BlockPosHelper( mc.world.getSpawnPos());
-        return null;
+        return new BlockPosHelper( mc.world.getSpawnPos());
     }
     
     /**
@@ -514,7 +515,7 @@ public class FWorld extends BaseLibrary {
      */
     public String getBiomeAt(int x, int z) {
         assert mc.world != null;
-        return mc.world.getRegistryManager().get(Registry.BIOME_KEY).getId(mc.world.getBiome(new BlockPos(x, 10, z))).toString();
+        return Registry.BIOME.getId(mc.world.getBiome(new BlockPos(x, 10, z))).toString();
     }
     
     /**

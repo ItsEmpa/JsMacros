@@ -6,6 +6,7 @@ import net.minecraft.text.TranslatableText;
 import xyz.wagyourtail.wagyourgui.containers.MultiElementContainer;
 import xyz.wagyourtail.jsmacros.client.gui.settings.settingcontainer.AbstractSettingContainer;
 import xyz.wagyourtail.jsmacros.client.gui.settings.SettingsOverlay;
+import xyz.wagyourtail.jsmacros.client.gui.settings.settingcontainer.AbstractSettingContainer;
 
 public abstract class AbstractSettingField<T> extends MultiElementContainer<AbstractSettingContainer> {
     protected final SettingsOverlay.SettingField<T> setting;

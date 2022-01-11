@@ -1,0 +1,14 @@
+{
+    "required": true,
+    "package": "xyz.wagyourtail.jsmacros.fabric.client.mixins",
+    "mixins": [
+    ],
+    "client": [
+        "MixinEntity",
+        "MixinStyle",
+        "MixinTextRenderer"
+    ],
+    "injectors": {
+        "defaultRequire": 1
+    }
+}

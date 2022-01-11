@@ -1,7 +1,10 @@
 package xyz.wagyourtail.jsmacros.client.api.classes;
 
 import net.minecraft.entity.Entity;
-import net.minecraft.text.*;
+import net.minecraft.text.ClickEvent;
+import net.minecraft.text.HoverEvent;
+import net.minecraft.text.LiteralText;
+import net.minecraft.text.Text;
 import net.minecraft.util.Formatting;
 import xyz.wagyourtail.jsmacros.client.access.CustomClickEvent;
 import xyz.wagyourtail.jsmacros.client.api.helpers.EntityHelper;
@@ -10,8 +13,7 @@ import xyz.wagyourtail.jsmacros.client.api.helpers.TextHelper;
 import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
 
-import java.util.LinkedList;
-import java.util.List;
+import java.util.function.Supplier;
 
 
 /**
@@ -20,14 +22,12 @@ import java.util.List;
  * @since 1.3.0
  */
 @SuppressWarnings("unused")
-public class TextBuilder {
-    private final LiteralText head = new LiteralText("");
-    private MutableText self = head;
-    
-    public TextBuilder() {
-    
-    }
-    
+public abstract class TextBuilder {
+    protected final LiteralText head = new LiteralText("");
+    protected Text self = head;
+
+    public static Supplier<TextBuilder> getTextBuilder;
+
     /**
      * move on to next section and set it's text.
      * @param text a {@link String}, {@link TextHelper} or {@link TextBuilder}
@@ -50,8 +50,7 @@ public class TextBuilder {
     }
     
     private void appendInternal(TextHelper helper) {
-        assert helper.getRaw() instanceof MutableText;
-        head.append(self = (MutableText) helper.getRaw());
+        head.append(self = helper.getRaw());
     }
     
     /**
@@ -62,7 +61,7 @@ public class TextBuilder {
      * @return
      */
     public TextBuilder withColor(int color) {
-        self.styled(style -> style.withColor(Formatting.byColorIndex(color)));
+        self.styled(style -> style.setColor(Formatting.byColorIndex(color)));
         return this;
     }
     
@@ -75,10 +74,7 @@ public class TextBuilder {
      *
      * @return
      */
-    public TextBuilder withColor(int r, int g, int b) {
-        self.styled(style -> style.withColor(TextColor.fromRgb((r & 255) << 16 | (g & 255) << 8 | (b & 255))));
-        return this;
-    }
+    public abstract TextBuilder withColor(int r, int g, int b);
     
     /**
      * set other formatting options for the current section
@@ -91,13 +87,13 @@ public class TextBuilder {
      * @return
      */
     public TextBuilder withFormatting(boolean underline, boolean bold, boolean italic, boolean strikethrough, boolean magic) {
-        List<Formatting> formattings = new LinkedList<>();
-        if (underline) formattings.add(Formatting.UNDERLINE);
-        if (bold) formattings.add(Formatting.BOLD);
-        if (italic) formattings.add(Formatting.ITALIC);
-        if (strikethrough) formattings.add(Formatting.STRIKETHROUGH);
-        if (magic) formattings.add(Formatting.OBFUSCATED);
-        self.styled(style -> style.withFormatting(formattings.toArray(new Formatting[0])));
+        self.styled(style -> {
+            style.setUnderline(underline);
+            style.setBold(bold);
+            style.setItalic(italic);
+            style.setStrikethrough(strikethrough);
+            style.setObfuscated(magic);
+        });
         return this;
     }
     
@@ -108,7 +104,7 @@ public class TextBuilder {
      * @return
      */
     public TextBuilder withShowTextHover(TextHelper text) {
-        self.styled(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, text.getRaw())));
+        self.styled(style -> style.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, text.getRaw())));
         return this;
     }
     
@@ -119,7 +115,7 @@ public class TextBuilder {
      * @return
      */
     public TextBuilder withShowItemHover(ItemStackHelper item) {
-        self.styled(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, new HoverEvent.ItemStackContent(item.getRaw()))));
+        self.styled(style -> style.setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ITEM, item.getRaw().toHoverableText())));
         return this;
     }
     
@@ -129,11 +125,7 @@ public class TextBuilder {
      * @since 1.3.0
      * @return
      */
-    public TextBuilder withShowEntityHover(EntityHelper<Entity> entity) {
-        Entity raw = entity.getRaw();
-        self.styled(style -> style.withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_ENTITY, new HoverEvent.EntityContent(raw.getType(), raw.getUuid(), raw.getName()))));
-        return this;
-    }
+    public abstract TextBuilder withShowEntityHover(EntityHelper<Entity> entity);
     
     /**
      * custom click event.
@@ -142,7 +134,7 @@ public class TextBuilder {
      * @return
      */
     public TextBuilder withCustomClickEvent(MethodWrapper<Object, Object, Object, ?> action) {
-        self.styled(style -> style.withClickEvent(new CustomClickEvent(() -> {
+        self.styled(style -> style.setClickEvent(new CustomClickEvent(() -> {
             try {
                 action.run();
             } catch (Throwable ex) {
@@ -162,7 +154,7 @@ public class TextBuilder {
     public TextBuilder withClickEvent(String action, String value) {
         ClickEvent.Action clickAction = ClickEvent.Action.byName(action);
         assert action != null;
-        self.styled(style -> style.withClickEvent(new ClickEvent(clickAction, value)));
+        self.styled(style -> style.setClickEvent(new ClickEvent(clickAction, value)));
         return this;
     }
     

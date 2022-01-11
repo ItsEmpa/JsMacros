@@ -1,6 +1,5 @@
 package xyz.wagyourtail.jsmacros.client.api.library.impl;
 
-import com.mojang.brigadier.Command;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.gui.screen.ChatScreen;
 import net.minecraft.client.toast.SystemToast;
@@ -165,12 +164,12 @@ public class FChat extends BaseLibrary {
      * @param fadeOut
      */
     public void title(Object title, Object subtitle, int fadeIn, int remain, int fadeOut) {
-        Text titlee = null;
-        Text subtitlee = null;
-        if (title instanceof TextHelper) titlee = ((TextHelper) title).getRaw();
-        else if (title != null) titlee = new LiteralText(title.toString());
-        if (subtitle instanceof TextHelper) subtitlee = ((TextHelper) subtitle).getRaw();
-        else if (subtitle != null) subtitlee = new LiteralText(subtitle.toString());
+        String titlee = null;
+        String subtitlee = null;
+        if (title instanceof TextHelper) titlee = ((TextHelper) title).getRaw().asFormattedString();
+        else if (title != null) titlee = title.toString();
+        if (subtitle instanceof TextHelper) subtitlee = ((TextHelper) subtitle).getRaw().asFormattedString();
+        else if (subtitle != null) subtitlee = subtitle.toString();
         if (title != null)
             mc.inGameHud.setTitles(titlee, null, fadeIn, remain, fadeOut);
         if (subtitle != null)
@@ -208,7 +207,7 @@ public class FChat extends BaseLibrary {
         if (t != null) {
             Text titlee = (title instanceof TextHelper) ? ((TextHelper) title).getRaw() : title != null ? new LiteralText(title.toString()) : null;
             Text descc = (desc instanceof TextHelper) ? ((TextHelper) desc).getRaw() : desc != null ? new LiteralText(desc.toString()) : null;
-            if (titlee != null) t.add(SystemToast.create(mc, null, titlee, descc));
+            if (titlee != null) t.add(new SystemToast(null, titlee, descc));
         }
     }
     
@@ -262,7 +261,7 @@ public class FChat extends BaseLibrary {
      * @return a new builder
      */
     public TextBuilder createTextBuilder() {
-        return new TextBuilder();
+        return TextBuilder.getTextBuilder.get();
     }
 
     /**
