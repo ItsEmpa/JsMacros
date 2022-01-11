@@ -27,14 +27,14 @@ public class MixinMinecraftClient {
             new EventDimensionChange(world.getRegistryKey().getValue().toString());
     }
     
-    @Inject(at = @At(value = "FIELD", target = "Lnet/minecraft/client/MinecraftClient;currentScreen:Lnet/minecraft/client/gui/screen/Screen;", opcode = Opcodes.PUTFIELD), method="setScreen")
+    @Inject(at = @At(value = "FIELD", target = "Lnet/minecraft/client/MinecraftClient;currentScreen:Lnet/minecraft/client/gui/screen/Screen;", opcode = Opcodes.PUTFIELD), method="openScreen")
     public void onOpenScreen(Screen screen, CallbackInfo info) {
         if (screen != currentScreen) new EventOpenScreen(screen);
     }
     
     @Inject(at = @At(value = "INVOKE", target= "Lnet/minecraft/client/MinecraftClientGame;onLeaveGameSession()V"), method="disconnect(Lnet/minecraft/client/gui/screen/Screen;)V")
     public void onDisconnect(Screen s, CallbackInfo info) {
-        if (s instanceof DisconnectedScreen ds) {
+        if (s instanceof DisconnectedScreen) {
             new EventDisconnect(((MixinDisconnectedScreen) s).getReason());
         } else {
             new EventDisconnect(null);

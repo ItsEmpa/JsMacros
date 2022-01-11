@@ -141,12 +141,12 @@ public class FChat extends BaseLibrary {
     public void open(String message, boolean await) throws InterruptedException {
         if (message == null) message = "";
         if (Core.getInstance().profile.checkJoinedThreadStack()) {
-            mc.setScreen(new ChatScreen(message));
+            mc.openScreen(new ChatScreen(message));
         } else {
             String finalMessage = message;
             final Semaphore semaphore = new Semaphore(await ? 0 : 1);
             mc.execute(() -> {
-                mc.setScreen(new ChatScreen(finalMessage));
+                mc.openScreen(new ChatScreen(finalMessage));
                 semaphore.release();
             });
             semaphore.acquire();

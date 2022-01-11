@@ -1,12 +1,13 @@
 {
   "required": true,
   "package": "xyz.wagyourtail.jsmacros.client.mixins",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_16",
   "client": [
     "access.MixinBeaconScreen",
     "access.MixinBossBarHud",
     "access.MixinChatHud",
     "access.MixinClientPlayNetworkHandler",
+    "access.MixinDisconnectedScreen",
     "access.MixinEntity",
     "access.MixinFontManager",
     "access.MixinFontStorage",
@@ -42,8 +43,5 @@
   ],
   "injectors": {
     "defaultRequire": 1
-  },
-  "mixins": [
-    "access.MixinDisconnectedScreen"
-  ]
+  }
 }

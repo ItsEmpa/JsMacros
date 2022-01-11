@@ -257,7 +257,7 @@ public class FWorld extends BaseLibrary {
                 if (sections[i].isEmpty()) {
                     return Stream.empty();
                 }
-                sections[i].getBlockStateContainer().method_39793(s -> {
+                sections[i].getContainer().count((s, n) -> {
                     if (stateFilter.apply(s.getBlock())) {
                         found.set(true);
                     }
