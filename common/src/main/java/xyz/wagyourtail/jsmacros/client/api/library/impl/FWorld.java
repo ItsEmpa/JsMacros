@@ -154,8 +154,8 @@ public class FWorld extends BaseLibrary {
      */
     public List<PositionCommon.Pos3D> findBlocksMatching(String id, int chunkrange) {
         assert mc.player != null;
-        int playerChunkX = (int) mc.player.getX() >> 4;
-        int playerChunkZ = (int) mc.player.getZ() >> 4;
+        int playerChunkX = (int) mc.player.x >> 4;
+        int playerChunkZ = (int) mc.player.z >> 4;
         return findBlocksMatchingInternal(playerChunkX, playerChunkZ, s -> Registry.BLOCK.getId(s).toString().equals(id), null, chunkrange);
     }
 
@@ -169,8 +169,8 @@ public class FWorld extends BaseLibrary {
      */
     public List<PositionCommon.Pos3D> findBlocksMatching(List<String> ids, int chunkrange) {
         assert mc.player != null;
-        int playerChunkX = (int) mc.player.getX() >> 4;
-        int playerChunkZ = (int) mc.player.getZ() >> 4;
+        int playerChunkX = (int) mc.player.x >> 4;
+        int playerChunkZ = (int) mc.player.z >> 4;
         Set<String> ids2 = new HashSet<>(ids);
         return findBlocksMatchingInternal(playerChunkX, playerChunkZ, s -> ids2.contains(Registry.BLOCK.getId(s).toString()), null, chunkrange);
     }
@@ -202,8 +202,8 @@ public class FWorld extends BaseLibrary {
     public List<PositionCommon.Pos3D> findBlocksMatching(MethodWrapper<String, Object, Boolean, ?> idFilter, MethodWrapper<Map<String, String>, Object, Boolean, ?> nbtFilter, int chunkrange) {
         if (idFilter == null) throw new IllegalArgumentException("idFilter cannot be null");
         assert mc.player != null;
-        int playerChunkX = (int) mc.player.getX() >> 4;
-        int playerChunkZ = (int) mc.player.getZ() >> 4;
+        int playerChunkX = (int) mc.player.x >> 4;
+        int playerChunkZ = (int) mc.player.z >> 4;
         return findBlocksMatching(playerChunkX, playerChunkZ, idFilter, nbtFilter, chunkrange);
     }
 
@@ -253,7 +253,7 @@ public class FWorld extends BaseLibrary {
                 if (sections[i].isEmpty()) {
                     return Stream.empty();
                 }
-                sections[i].getContainer().count((s, n) -> {
+                sections[i].getContainer().method_21732((s, n) -> {
                     if (stateFilter.apply(s.getBlock())) {
                         found.set(true);
                     }

@@ -32,7 +32,7 @@ public class EntityHelper<T extends Entity> extends BaseHelper<T> {
      * @return entity position.
      */
     public PositionCommon.Pos3D getPos() {
-        return new PositionCommon.Pos3D(base.getX(), base.getY(), base.getZ());
+        return new PositionCommon.Pos3D(base.x, base.y, base.z);
     }
     
     /**
@@ -40,7 +40,7 @@ public class EntityHelper<T extends Entity> extends BaseHelper<T> {
      * @return the {@code x} value of the entity.
      */
     public double getX() {
-        return base.getX();
+        return base.x;
     }
 
     /**
@@ -48,7 +48,7 @@ public class EntityHelper<T extends Entity> extends BaseHelper<T> {
      * @return the {@code y} value of the entity.
      */
     public double getY() {
-        return base.getY();
+        return base.y;
     }
     
     /**
@@ -56,7 +56,7 @@ public class EntityHelper<T extends Entity> extends BaseHelper<T> {
      * @return the {@code z} value of the entity.
      */
     public double getZ() {
-        return base.getZ();
+        return base.z;
     }
 
     /**

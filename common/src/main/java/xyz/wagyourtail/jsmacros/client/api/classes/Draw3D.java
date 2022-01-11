@@ -1,7 +1,7 @@
 package xyz.wagyourtail.jsmacros.client.api.classes;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.platform.GlStateManager;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.render.*;
 import net.minecraft.util.math.MathHelper;
@@ -293,40 +293,40 @@ public class Draw3D {
         MinecraftClient mc = MinecraftClient.getInstance();
 
         //setup
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.lineWidth(2.5F);
-        RenderSystem.disableTexture();
-        RenderSystem.matrixMode(5889);
+        GlStateManager.enableBlend();
+        GlStateManager.blendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+        GlStateManager.lineWidth(2.5F);
+        GlStateManager.disableTexture();
+        GlStateManager.matrixMode(5889);
 
-        RenderSystem.pushMatrix();
+        GlStateManager.pushMatrix();
 
         Camera camera = mc.gameRenderer.getCamera();
         Vec3d camPos = camera.getPos();
 
-        RenderSystem.rotatef(MathHelper.wrapDegrees(camera.getPitch()), 1, 0, 0);
-        RenderSystem.rotatef(MathHelper.wrapDegrees(camera.getYaw() + 180.0F), 0, 1, 0);
-        RenderSystem.translated(-camPos.x, -camPos.y, -camPos.z);
+        GlStateManager.rotatef(MathHelper.wrapDegrees(camera.getPitch()), 1, 0, 0);
+        GlStateManager.rotatef(MathHelper.wrapDegrees(camera.getYaw() + 180.0F), 0, 1, 0);
+        GlStateManager.translated(-camPos.x, -camPos.y, -camPos.z);
 
         //render
         synchronized (boxes) {
             for (Box b : boxes) {
-                b.render();
+                b.render(camPos);
             }
         }
 
         synchronized (lines) {
             for (Line l : lines) {
-                l.render();
+                l.render(camPos);
             }
         }
-        
-        RenderSystem.popMatrix();
-        
-        //reset
-        RenderSystem.matrixMode(5888);
-        RenderSystem.enableTexture();
-        RenderSystem.disableBlend();
+    
+        GlStateManager.popMatrix();
+    
+        // reset
+        GlStateManager.matrixMode(5888);
+        GlStateManager.enableTexture();
+        GlStateManager.disableBlend();
     }
 
     public static class Box {
@@ -434,25 +434,25 @@ public class Draw3D {
             this.fill = fill;
         }
 
-        public void render() {
+        public void render(Vec3d camPos) {
             final boolean cull = !this.cull;
             int a = (color >> 24) & 0xFF;
             int r = (color >> 16) & 0xFF;
             int g = (color >> 8) & 0xFF;
             int b = color & 0xFF;
 
-            float x1 = (float)pos.x1;
-            float y1 = (float)pos.y1;
-            float z1 = (float)pos.z1;
-            float x2 = (float)pos.x2;
-            float y2 = (float)pos.y2;
-            float z2 = (float)pos.z2;
+            float x1 = (float) (pos.x1 - camPos.x);
+            float y1 = (float) (pos.y1 - camPos.y);
+            float z1 = (float) (pos.z1 - camPos.z);
+            float x2 = (float) (pos.x2 - camPos.x);
+            float y2 = (float) (pos.y2 - camPos.y);
+            float z2 = (float) (pos.z2 - camPos.z);
 
-            if (cull) RenderSystem.disableDepthTest();
+            if (cull) GlStateManager.disableDepthTest();
             
             Tessellator tess = Tessellator.getInstance();
             BufferBuilder buf = tess.getBuffer();
-            
+        
             if (this.fill) {
                 float fa = ((fillColor >> 24) & 0xFF)/255F;
                 float fr = ((fillColor >> 16) & 0xFF)/255F;
@@ -460,7 +460,7 @@ public class Draw3D {
                 float fb = (fillColor & 0xFF)/255F;
                 
                 //1.15+ culls insides
-                RenderSystem.disableCull();
+                GlStateManager.disableCull();
 
                 buf.begin(GL11.GL_TRIANGLE_STRIP,  VertexFormats.POSITION_COLOR);
 
@@ -482,10 +482,10 @@ public class Draw3D {
 
                 tess.draw();
                 
-                RenderSystem.enableCull();
+                GlStateManager.enableCull();
             }
 
-            RenderSystem.lineWidth(2.5F);
+            GlStateManager.lineWidth(2.5F);
             buf.begin(GL11.GL_LINE_STRIP, VertexFormats.POSITION_COLOR);
 
             buf.vertex(x1, y1, z1).color(r, g, b, a).next();
@@ -527,7 +527,7 @@ public class Draw3D {
 
             tess.draw();
 
-            if (cull) RenderSystem.enableDepthTest();
+            if (cull) GlStateManager.enableDepthTest();
         }
     }
     
@@ -589,10 +589,10 @@ public class Draw3D {
         public void setAlpha(int alpha) {
             this.color = (color & 0xFFFFFF) | (alpha << 24);
         }
-        
-        public void render() {
+    
+        public void render(Vec3d camPos) {
             final boolean cull = !this.cull;
-            if (cull) RenderSystem.disableDepthTest();
+            if (cull) GlStateManager.disableDepthTest();
         
             int a = (color >> 24) & 0xFF;
             int r = (color >> 16) & 0xFF;
@@ -600,13 +600,13 @@ public class Draw3D {
             int b = color & 0xFF;
             Tessellator tess = Tessellator.getInstance();
             BufferBuilder buf = tess.getBuffer();
-            buf.begin(GL11.GL_LINE_STRIP,  VertexFormats.POSITION_COLOR);
-            buf.vertex(pos.x1, pos.y1, pos.z1).color(r, g, b, a).next();
-            buf.vertex(pos.x1, pos.y1, pos.z1).color(r, g, b, a).next();
-            buf.vertex(pos.x2, pos.y2, pos.z2).color(r, g, b, a).next();
+            buf.begin(GL11.GL_LINE_STRIP, VertexFormats.POSITION_COLOR);
+            buf.vertex(pos.x1 - camPos.x, pos.y1 - camPos.y, pos.z1 - camPos.z).color(r, g, b, a).next();
+            buf.vertex(pos.x1 - camPos.x, pos.y1 - camPos.y, pos.z1 - camPos.z).color(r, g, b, a).next();
+            buf.vertex(pos.x2 - camPos.x, pos.y2 - camPos.y, pos.z2 - camPos.z).color(r, g, b, a).next();
             tess.draw();
             
-            if (cull) RenderSystem.enableDepthTest();
+            if (cull) GlStateManager.enableDepthTest();
         }
     }
 }
