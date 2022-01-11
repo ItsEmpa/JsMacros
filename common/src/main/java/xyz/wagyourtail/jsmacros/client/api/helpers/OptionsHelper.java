@@ -1,16 +1,14 @@
 package xyz.wagyourtail.jsmacros.client.api.helpers;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.options.CloudRenderMode;
-import net.minecraft.client.options.GameOptions;
-import net.minecraft.client.resource.ClientResourcePackProfile;
-import net.minecraft.client.util.Window;
-import net.minecraft.resource.ResourcePackManager;
-import net.minecraft.resource.ResourcePackProfile;
-import net.minecraft.sound.SoundCategory;
-import net.minecraft.util.Arm;
-import org.lwjgl.glfw.GLFW;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.SoundCategory;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.resources.ResourcePackRepository;
+import net.minecraft.client.settings.GameSettings;
+import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
 import xyz.wagyourtail.jsmacros.core.helpers.BaseHelper;
 
 import java.util.*;
@@ -22,12 +20,12 @@ import java.util.stream.Collectors;
  * @since 1.1.7
  */
 @SuppressWarnings("unused")
-public class OptionsHelper extends BaseHelper<GameOptions> {
-    private static final Map<String, SoundCategory> SOUND_CATEGORY_MAP = Arrays.stream(SoundCategory.values()).collect(Collectors.toMap(SoundCategory::getName, Function.identity()));
-    private final MinecraftClient mc = MinecraftClient.getInstance();
-    private final ResourcePackManager<ClientResourcePackProfile> rpm = mc.getResourcePackManager();
+public class OptionsHelper extends BaseHelper<GameSettings> {
+private static final Map<String, SoundCategory> SOUND_CATEGORY_MAP = Arrays.stream(SoundCategory.values()).collect(Collectors.toMap(SoundCategory::getName, Function.identity()));
+    private final Minecraft mc = Minecraft.getInstance();
+    private final ResourcePackRepository rpm = mc.getResourcePackLoader();
     
-    public OptionsHelper(GameOptions options) {
+    public OptionsHelper(GameSettings options) {
         super(options);
     }
     /**
@@ -35,14 +33,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return 0: off, 2: fancy
      */
     public int getCloudMode() {
-        switch (base.getCloudRenderMode()) {
-            case FANCY:
-                return 2;
-            case FAST:
-                return 1;
-            default:
-                return 0;
-        }
+        return base.getCloudMode();
     }
     /**
      * @since 1.1.7
@@ -50,17 +41,8 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public OptionsHelper setCloudMode(int mode) {
-        switch(mode) {
-            case 2:
-                base.cloudRenderMode = CloudRenderMode.FANCY;
-                return this;
-            case 1:
-                base.cloudRenderMode = CloudRenderMode.FAST;
-                return this;
-            default:
-                base.cloudRenderMode = CloudRenderMode.OFF;
-                return this;
-        }
+        base.cloudMode = mode;
+        return this;
     }
     /**
      * @since 1.1.7
@@ -83,7 +65,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return list of names of resource packs.
      */
     public List<String> getResourcePacks() {
-        return rpm.getProfiles().stream().map(ResourcePackProfile::getName).collect(Collectors.toList());
+        return rpm.func_110609_b().stream().map(ResourcePackRepository.Entry::getName).collect(Collectors.toList());
     }
     
     /**
@@ -91,7 +73,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return list of names of enabled resource packs.
      */
     public List<String> getEnabledResourcePacks() {
-        return rpm.getEnabledProfiles().stream().map(ResourcePackProfile::getName).collect(Collectors.toList());
+        return rpm.func_110613_c().stream().map(ResourcePackRepository.Entry::getName).collect(Collectors.toList());
     }
     
     /**
@@ -102,25 +84,19 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public OptionsHelper setEnabledResourcePacks(String[] enabled) {
-        Collection<String> en = Arrays.stream(enabled).distinct().collect(Collectors.toList());
-        List<String> currentRP = ImmutableList.copyOf(base.resourcePacks);
-        Collection<ClientResourcePackProfile> prof = en.stream().map(e -> rpm.getProfile(e)).filter(Objects::nonNull).collect(Collectors.toList());
-        rpm.setEnabledProfiles(prof);
-        base.resourcePacks.clear();
-        base.incompatibleResourcePacks.clear();
-        for (ResourcePackProfile p : rpm.getEnabledProfiles()) {
-            if (!p.isPinned()) {
-                base.resourcePacks.add(p.getName());
-                if (!p.getCompatibility().isCompatible()) {
-                    base.incompatibleResourcePacks.add(p.getName());
+        mc.execute(() -> {
+            ResourcePackRepository.Entry[] enabledRP = new ResourcePackRepository.Entry[enabled.length];
+            for (ResourcePackRepository.Entry e : rpm.func_110609_b()) {
+                for (int i = 0; i < enabled.length; ++i) {
+                    if (e.getName().equals(enabled[i])) {
+                        enabledRP[i] = e;
+                    }
                 }
             }
-        }
-        base.write();
-        List<String> newRP = ImmutableList.copyOf(base.resourcePacks);
-        if (!currentRP.equals(newRP)) {
-            mc.reloadResources();
-        }
+            rpm.func_148527_a(Arrays.stream(enabledRP).filter(Objects::nonNull).collect(Collectors.toList()));
+            base.save();
+            mc.stitchTextures();
+        });
         return this;
     }
     
@@ -129,7 +105,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public boolean isRightHanded() {
-        return base.mainArm == Arm.RIGHT;
+        return true;
     }
     
     /**
@@ -137,11 +113,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @param val
      */
     public void setRightHanded(boolean val) {
-        if (val) {
-            base.mainArm = Arm.RIGHT;
-        } else {
-            base.mainArm = Arm.LEFT;
-        }
+
     }
     
     /**
@@ -158,7 +130,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public OptionsHelper setFov(double fov) {
-        base.fov = fov;
+        base.fov = (float) fov;
         return this;
     }
     
@@ -183,7 +155,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public int getWidth() {
-        return mc.window.getWidth();
+        return mc.width;
     }
     
     /**
@@ -191,25 +163,23 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @return
      */
     public int getHeight() {
-        return mc.window.getHeight();
+        return mc.height;
     }
     
     /**
      * @since 1.2.6
      * @param w
      */
-    public void setWidth(int w) {
-        Window win = mc.window;
-        GLFW.glfwSetWindowSize(win.getHandle(), w, win.getHeight());
+    public void setWidth(int w) throws LWJGLException {
+        Display.setDisplayMode(new DisplayMode(w, Display.getHeight()));
     }
     
     /**
      * @since 1.2.6
      * @param h
      */
-    public void setHeight(int h) {
-        Window win = mc.window;
-        GLFW.glfwSetWindowSize(win.getHandle(), win.getWidth(), h);
+    public void setHeight(int h) throws LWJGLException {
+        Display.setDisplayMode(new DisplayMode(Display.getWidth(), h));
     }
     
     /**
@@ -217,9 +187,8 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * @param w
      * @param h
      */
-    public void setSize(int w, int h) {
-        Window win = mc.window;
-        GLFW.glfwSetWindowSize(win.getHandle(), w, h);
+    public void setSize(int w, int h) throws LWJGLException {
+        Display.setDisplayMode(new DisplayMode(w, h));
     }
     
     /**
@@ -235,7 +204,7 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      * normal values for gamma are between {@code 0} and {@code 1}
      */
     public void setGamma(double gamma) {
-        base.gamma = gamma;
+        base.gamma = (float) gamma;
     }
     
     /**
@@ -277,7 +246,10 @@ public class OptionsHelper extends BaseHelper<GameOptions> {
      */
     public void setGuiScale(int scale) {
         base.guiScale = scale;
-        mc.execute(mc::onResolutionChanged);
+        mc.execute(() -> {
+            ScaledResolution scaledresolution = new ScaledResolution(mc);
+            mc.currentScreen.resize(mc, scaledresolution.getWidth(), scaledresolution.getHeight());
+        });
     }
     
     /**

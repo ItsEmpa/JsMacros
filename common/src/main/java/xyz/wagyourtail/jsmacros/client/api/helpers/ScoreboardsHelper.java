@@ -1,9 +1,10 @@
 package xyz.wagyourtail.jsmacros.client.api.helpers;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.entity.player.PlayerEntity;
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.player.EntityPlayer;
+import net.minecraft.scoreboard.ScoreObjective;
+import net.minecraft.scoreboard.ScorePlayerTeam;
 import net.minecraft.scoreboard.Scoreboard;
-import net.minecraft.scoreboard.ScoreboardObjective;
 import net.minecraft.scoreboard.Team;
 import xyz.wagyourtail.jsmacros.core.helpers.BaseHelper;
 
@@ -27,7 +28,7 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @return
      */
     public ScoreboardObjectiveHelper getObjectiveForTeamColorIndex(int index) {
-        ScoreboardObjective obj = null;
+        ScoreObjective obj = null;
         if (index >= 0) obj = base.getObjectiveForSlot(index + 3);
         return obj == null ? null : new ScoreboardObjectiveHelper(obj);
     }
@@ -40,7 +41,7 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @return
      */
     public ScoreboardObjectiveHelper getObjectiveSlot(int slot) {
-        ScoreboardObjective obj = null;
+        ScoreObjective obj = null;
         if (slot >= 0) obj = base.getObjectiveForSlot(slot);
         return obj == null ? null : new ScoreboardObjectiveHelper(obj);
     }
@@ -50,7 +51,7 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @since 1.2.9
      * @return
      */
-    public int getPlayerTeamColorIndex(PlayerEntityHelper<PlayerEntity> entity) {
+    public int getPlayerTeamColorIndex(PlayerEntityHelper<EntityPlayer> entity) {
         return getPlayerTeamColorIndex(entity.getRaw());
     }
     
@@ -67,7 +68,7 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @since 1.3.0
      * @return
      */
-    public TeamHelper getPlayerTeam(PlayerEntityHelper<PlayerEntity> p) {
+    public TeamHelper getPlayerTeam(PlayerEntityHelper<EntityPlayer> p) {
         return new TeamHelper(getPlayerTeam(p.getRaw()));
     }
     
@@ -76,8 +77,8 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @since 1.3.0
      * @return
      */
-    protected Team getPlayerTeam(PlayerEntity p) {
-        return base.getPlayerTeam(p.getEntityName());
+    protected ScorePlayerTeam getPlayerTeam(EntityPlayer p) {
+        return base.getPlayerTeam(p.getDisplayNameString());
     }
     
     /**
@@ -85,10 +86,10 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @since 1.2.9
      * @return
      */
-    protected int getPlayerTeamColorIndex(PlayerEntity entity) {
-        Team t = base.getPlayerTeam(entity.getEntityName());
+    protected int getPlayerTeamColorIndex(EntityPlayer entity) {
+        ScorePlayerTeam t = base.getPlayerTeam(entity.getDisplayNameString());
         if (t == null) return -1;
-        return t.getColor().getColorIndex();
+        return t.getFormatting().getColorIndex();
     }
     
     /**
@@ -96,7 +97,7 @@ public class ScoreboardsHelper extends BaseHelper<Scoreboard> {
      * @return the {@link ScoreboardObjectiveHelper} for the currently displayed sidebar scoreboard.
      */
     public ScoreboardObjectiveHelper getCurrentScoreboard() {
-        MinecraftClient mc = MinecraftClient.getInstance();
+        Minecraft mc = Minecraft.getInstance();
         int color = getPlayerTeamColorIndex(mc.player);
         ScoreboardObjectiveHelper h = getObjectiveForTeamColorIndex(color);
         if (h == null) h = getObjectiveSlot(1);

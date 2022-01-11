@@ -1,15 +1,16 @@
 package xyz.wagyourtail.jsmacros.client.api.classes;
 
 import com.google.common.collect.ImmutableList;
-import com.mojang.blaze3d.platform.GlStateManager;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.Drawable;
-import net.minecraft.client.gui.DrawableHelper;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.client.renderer.GlStateManager;
 import xyz.wagyourtail.jsmacros.client.api.helpers.ItemStackHelper;
 import xyz.wagyourtail.jsmacros.client.api.helpers.TextHelper;
 import xyz.wagyourtail.jsmacros.client.api.library.impl.FHud;
 import xyz.wagyourtail.jsmacros.client.api.sharedclasses.RenderCommon;
 import xyz.wagyourtail.jsmacros.client.api.sharedinterfaces.IDraw2D;
+import xyz.wagyourtail.jsmacros.client.gui.elements.Drawable;
 import xyz.wagyourtail.jsmacros.core.Core;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
 
@@ -23,7 +24,7 @@ import java.util.*;
  * @see xyz.wagyourtail.jsmacros.client.api.sharedinterfaces.IDraw2D
  */
 @SuppressWarnings("deprecation")
-public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
+public class Draw2D extends Gui implements IDraw2D<Draw2D> {
     private final Set<RenderCommon.RenderElement> elements = new LinkedHashSet<>();
     /**
      * @since 1.0.5
@@ -38,10 +39,12 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
      @Deprecated
     public MethodWrapper<String, Object, Object, ?> catchInit;
     
-    protected final MinecraftClient mc;
+    protected final Minecraft mc;
+    protected final ScaledResolution res;
     
     public Draw2D() {
-        this.mc = MinecraftClient.getInstance();
+        this.mc = Minecraft.getInstance();
+        this.res = new ScaledResolution(this.mc);
     }
     
     /**
@@ -50,7 +53,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
      */
     @Override
     public int getWidth() {
-        return mc.window.getScaledWidth();
+        return res.getWidth();
     }
 
     /**
@@ -59,7 +62,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
      */
     @Override
     public int getHeight() {
-        return mc.window.getScaledHeight();
+        return res.getHeight();
     }
 
     /**
@@ -70,7 +73,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
     public List<RenderCommon.Text> getTexts() {
         List<RenderCommon.Text> list = new LinkedList<>();
         synchronized (elements) {
-            for (Drawable e : elements) {
+            for (RenderCommon.RenderElement e : elements) {
                 if (e instanceof RenderCommon.Text) list.add((RenderCommon.Text) e);
             }
         }
@@ -85,7 +88,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
     public List<RenderCommon.Rect> getRects() {
         List<RenderCommon.Rect> list = new LinkedList<>();
         synchronized (elements) {
-            for (Drawable e : elements) {
+            for (RenderCommon.RenderElement e : elements) {
                 if (e instanceof RenderCommon.Rect) list.add((RenderCommon.Rect) e);
             }
         }
@@ -100,7 +103,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
     public List<RenderCommon.Item> getItems() {
         List<RenderCommon.Item> list = new LinkedList<>();
         synchronized (elements) {
-            for (Drawable e : elements) {
+            for (RenderCommon.RenderElement e : elements) {
                 if (e instanceof RenderCommon.Item) list.add((RenderCommon.Item) e);
             }
         }
@@ -115,7 +118,7 @@ public class Draw2D extends DrawableHelper implements IDraw2D<Draw2D> {
     public List<RenderCommon.Image> getImages() {
         List<RenderCommon.Image> list = new LinkedList<>();
         synchronized (elements) {
-            for (Drawable e : elements) {
+            for (RenderCommon.RenderElement e : elements) {
                 if (e instanceof RenderCommon.Image) list.add((RenderCommon.Image) e);
             }
         }

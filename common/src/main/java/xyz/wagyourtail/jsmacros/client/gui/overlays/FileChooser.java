@@ -1,12 +1,13 @@
 package xyz.wagyourtail.jsmacros.client.gui.overlays;
 
 import com.google.common.collect.ImmutableList;
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.widget.AbstractButtonWidget;
-import net.minecraft.text.LiteralText;
-import net.minecraft.text.Text;
-import net.minecraft.text.TranslatableText;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChatComponentTranslation;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.Util;
+import xyz.wagyourtail.jsmacros.client.JsMacros;
 import xyz.wagyourtail.wagyourgui.elements.Button;
 import xyz.wagyourtail.wagyourgui.elements.Scrollbar;
 import xyz.wagyourtail.jsmacros.core.Core;
@@ -23,7 +24,7 @@ import java.util.function.Consumer;
 
 public class FileChooser extends OverlayContainer {
     private File directory;
-    private Text dirname;
+    private IChatComponent dirname;
     private File selected;
     public File root = Core.getInstance().config.macroFolder;
     private final List<fileObj> files = new ArrayList<>();
@@ -31,7 +32,7 @@ public class FileChooser extends OverlayContainer {
     private final Consumer<File> editFile;
     private int topScroll;
 
-    public FileChooser(int x, int y, int width, int height, TextRenderer textRenderer, File directory, File selected, IOverlayParent parent, Consumer<File> setFile, Consumer<File> editFile) {
+    public FileChooser(int x, int y, int width, int height, FontRenderer textRenderer, File directory, File selected, IOverlayParent parent, Consumer<File> setFile, Consumer<File> editFile) {
         super(x, y, width, height, textRenderer, parent);
         this.setFile = setFile;
         this.directory = directory;
@@ -53,7 +54,7 @@ public class FileChooser extends OverlayContainer {
         }
         
         this.directory = dir;
-        this.dirname = new LiteralText("./" + root.getAbsoluteFile().toPath().relativize(dir.getAbsoluteFile().toPath()).toString().replaceAll("\\\\", "/"));
+        this.dirname = new ChatComponentText("./" + root.getAbsoluteFile().toPath().relativize(dir.getAbsoluteFile().toPath()).toString().replaceAll("\\\\", "/"));
 
         if (!this.directory.equals(root)) {
             addFile(this.directory.getParentFile(), "..");
@@ -86,23 +87,23 @@ public class FileChooser extends OverlayContainer {
         super.init();
         int w = width - 4;
         topScroll = y + 13;
-        this.addButton(new Button(x + width - 12, y + 2, 10, 10, textRenderer, 0, 0x7FFFFFFF, 0x7FFFFFFF, 0xFFFFFF, new LiteralText("X"), (btn) -> this.close()));
+        this.addButton(new Button(x + width - 12, y + 2, 10, 10, textRenderer, 0, 0x7FFFFFFF, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentText("X"), (btn) -> this.close()));
         scroll = this.addButton(new Scrollbar(x + width - 10, y + 13, 8, height - 28, 0, 0xFF000000, 0xFFFFFFFF, 2, this::onScrollbar));
 
-        this.addButton(new Button(x + w * 5 / 6 + 2, y + height - 14, w / 6, 12, textRenderer,0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("jsmacros.select"), (btn) -> {
+        this.addButton(new Button(x + w * 5 / 6 + 2, y + height - 14, w / 6, 12, textRenderer,0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("jsmacros.select"), (btn) -> {
             if (this.selected != null && this.setFile != null) {
                 this.setFile.accept(this.selected);
                 this.close();
             }
         }));
 
-        this.addButton(new Button(x + w * 4 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("selectWorld.edit"), (btn) -> {
+        this.addButton(new Button(x + w * 4 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("selectWorld.edit"), (btn) -> {
             if (this.selected != null) editFile.accept(selected);
         }));
 
-        this.addButton(new Button(x + w * 3 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("jsmacros.rename"), (btn) -> {
+        this.addButton(new Button(x + w * 3 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("jsmacros.rename"), (btn) -> {
             if (selected != null) {
-                this.openOverlay(new TextPrompt(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new TranslatableText("jsmacros.filename"), selected.getName(), this, (str) -> {
+                this.openOverlay(new TextPrompt(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new ChatComponentTranslation("jsmacros.filename"), selected.getName(), this, (str) -> {
                     File f = new File(directory, str);
                     if (selected.renameTo(f)) {
                         this.setDir(directory);
@@ -112,7 +113,7 @@ public class FileChooser extends OverlayContainer {
             }
         }));
 
-        this.addButton(new Button(x + w * 2 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("selectWorld.delete"), (btn) -> {
+        this.addButton(new Button(x + w * 2 / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("selectWorld.delete"), (btn) -> {
             if (this.selected != null && this.selected.isFile()) {
                 fileObj f = null;
                 for (fileObj fi : files) {
@@ -125,7 +126,7 @@ public class FileChooser extends OverlayContainer {
             }
         }));
 
-        this.addButton(new Button(x + w / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("jsmacros.new"), (btn) -> this.openOverlay(new TextPrompt(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new TranslatableText("jsmacros.filename"), "", this, (str) -> {
+        this.addButton(new Button(x + w / 6 + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("jsmacros.new"), (btn) -> this.openOverlay(new TextPrompt(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new ChatComponentTranslation("jsmacros.filename"), "", this, (str) -> {
             if (str.trim().equals("")) return;
             boolean edit = true;
             for (BaseLanguage language : Core.getInstance().languages) {
@@ -147,8 +148,8 @@ public class FileChooser extends OverlayContainer {
             }
         }))));
 
-        this.addButton(new Button(x + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new TranslatableText("jsmacros.openfolder"), (btn) -> {
-            Util.getOperatingSystem().open(directory);
+        this.addButton(new Button(x + 2, y + height - 14, w / 6, 12, textRenderer, 0, 0, 0x7FFFFFFF, 0xFFFFFF, new ChatComponentTranslation("jsmacros.openfolder"), (btn) -> {
+            JsMacros.openURI("file:///" + directory.getAbsolutePath());
         }));
 
         this.setDir(directory);
@@ -160,7 +161,7 @@ public class FileChooser extends OverlayContainer {
     }
 
     public void addFile(File f, String btnText) {
-        fileObj file = new fileObj(f, new Button(x + 3 + (files.size() % 5 * (width - 12) / 5), topScroll + (files.size() / 5 * 12), (width - 12) / 5, 12, textRenderer, 0, 0, 0x7FFFFFFF, f.isDirectory() ? 0xFFFF00 : 0xFFFFFF, new LiteralText(btnText), (btn) -> {
+        fileObj file = new fileObj(f, new Button(x + 3 + (files.size() % 5 * (width - 12) / 5), topScroll + (files.size() / 5 * 12), (width - 12) / 5, 12, textRenderer, 0, 0, 0x7FFFFFFF, f.isDirectory() ? 0xFFFF00 : 0xFFFFFF, new ChatComponentText(btnText), (btn) -> {
             selectFile(f);
         }));
         file.btn.visible = topScroll + (files.size() / 5 * 12) >= y + 13 && topScroll + (files.size() / 5 * 12) <= y + height - 27;
@@ -178,7 +179,7 @@ public class FileChooser extends OverlayContainer {
     }
 
     public void confirmDelete(fileObj f) {
-        this.openOverlay(new ConfirmOverlay(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new TranslatableText("jsmacros.confirmdeletefile"), this, (conf) -> {
+        this.openOverlay(new ConfirmOverlay(x + width / 2 - 100, y + height / 2 - 50, 200, 100, textRenderer, new ChatComponentTranslation("jsmacros.confirmdeletefile"), this, (conf) -> {
             delete(f);
         }));
     }
@@ -211,10 +212,10 @@ public class FileChooser extends OverlayContainer {
 //        textRenderer.draw(, mouseX, mouseY, color, shadow, matrix, vertexConsumers, seeThrough, backgroundColor, light)
         super.render(mouseX, mouseY, delta);
         
-        for (AbstractButtonWidget b : ImmutableList.copyOf(this.buttons)) {
+        for (GuiButton b : ImmutableList.copyOf(this.buttons)) {
             if (b instanceof Button && ((Button) b).hovering && ((Button) b).cantRenderAllText()) {
                 // border
-                int width = textRenderer.getStringWidth(b.getMessage());
+                int width = textRenderer.getStringWidth(b.message);
                 fill(mouseX-3, mouseY, mouseX+width+3, mouseY+1, 0x7F7F7F7F);
                 fill(mouseX+width+2, mouseY-textRenderer.fontHeight - 3, mouseX+width+3, mouseY, 0x7F7F7F7F);
                 fill(mouseX-3, mouseY-textRenderer.fontHeight - 3, mouseX-2, mouseY, 0x7F7F7F7F);
@@ -222,7 +223,7 @@ public class FileChooser extends OverlayContainer {
                 
                 // fill
                 fill(mouseX-2, mouseY-textRenderer.fontHeight - 3, mouseX+width+2, mouseY, 0xFF000000);
-                drawString(textRenderer, b.getMessage(), mouseX, mouseY-textRenderer.fontHeight - 1, 0xFFFFFF);
+                drawWithShadow(textRenderer, b.message, mouseX, mouseY-textRenderer.fontHeight - 1, 0xFFFFFF);
             }
         }
     }

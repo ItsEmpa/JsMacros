@@ -1,9 +1,9 @@
 package xyz.wagyourtail.jsmacros.client.api.helpers;
 
-import net.minecraft.item.ItemGroup;
+import net.minecraft.creativetab.CreativeTabs;
+import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.util.registry.Registry;
+import net.minecraft.nbt.NBTTagCompound;
 import xyz.wagyourtail.jsmacros.core.helpers.BaseHelper;
 
 /**
@@ -67,21 +67,21 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public String getDefaultName() {
-        return base.getItem().getName().getString();
+        return base.getItem().getDisplayName(base);
     }
     
     /**
      * @return
      */
     public String getName() {
-        return base.getName().getString();
+        return base.getName();
     }
     
     /**
      * @return
      */
     public int getCount() {
-        return base.getCount();
+        return base.count;
     }
     
     /**
@@ -96,7 +96,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public NBTElementHelper<?> getNBT() {
-        CompoundTag tag = base.getTag();
+        NBTTagCompound tag = base.getTag();
         if (tag != null) return NBTElementHelper.resolve(tag);
         else return null;
     }
@@ -106,9 +106,9 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public String getCreativeTab() {
-        ItemGroup g = base.getItem().getGroup();
+        CreativeTabs g = base.getItem().getItemGroup();
         if (g != null)
-            return g.getName();
+            return g.getTranslationKey();
         else
             return null;
     }
@@ -126,7 +126,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public String getItemId() {
-        return Registry.ITEM.getId(base.getItem()).toString();
+        return Item.REGISTRY.getIdentifier(base.getItem()).toString();
     }
     
     /**
@@ -137,7 +137,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
     }
     
     public String toString() {
-        return String.format("ItemStack:{\"id\":\"%s\", \"damage\": %d, \"count\": %d}", this.getItemId(), base.getDamage(), base.getCount());
+        return String.format("ItemStack:{\"id\":\"%s\", \"damage\": %d, \"count\": %d}", this.getItemId(), base.getDamage(), base.count);
     }
     
     /**
@@ -164,7 +164,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isItemEqual(ItemStackHelper ish) {
-        return base.isItemEqual(ish.getRaw()) && base.getDamage() == ish.getRaw().getDamage();
+        return base.equalsIgnoreTags(ish.getRaw()) && base.getDamage() == ish.getRaw().getDamage();
     } 
     
     /**
@@ -173,7 +173,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isItemEqual(ItemStack is) {
-        return base.isItemEqual(is) && base.getDamage() == is.getDamage();
+        return base.equalsIgnoreTags(is) && base.getDamage() == is.getDamage();
     }
     
     /**
@@ -182,7 +182,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isItemEqualIgnoreDamage(ItemStackHelper ish) {
-        return base.isItemEqualIgnoreDamage(ish.getRaw());
+        return this.base == ish.base;
     }
     
     /**
@@ -191,7 +191,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isItemEqualIgnoreDamage(ItemStack is) {
-        return base.isItemEqualIgnoreDamage(is);
+        return base == is;
     }
     
     /**
@@ -200,7 +200,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isNBTEqual(ItemStackHelper ish) {
-        return ItemStack.areTagsEqual(base, ish.getRaw());
+        return ItemStack.equalsIgnoreDamage(base, ish.getRaw());
     }
     
     /**
@@ -209,7 +209,7 @@ public class ItemStackHelper extends BaseHelper<ItemStack> {
      * @return
      */
     public boolean isNBTEqual(ItemStack is) {
-        return ItemStack.areTagsEqual(base, is);
+        return ItemStack.equalsIgnoreDamage(base, is);
     }
     
     /**

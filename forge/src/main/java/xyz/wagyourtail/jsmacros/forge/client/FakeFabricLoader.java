@@ -4,6 +4,7 @@ import com.google.gson.*;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.loader.api.FabricLoader;
+import net.minecraft.launchwrapper.LaunchClassLoader;
 import org.apache.commons.io.FileUtils;
 import org.apache.logging.log4j.Level;
 import org.spongepowered.asm.mixin.Mixins;
@@ -43,7 +44,7 @@ public class FakeFabricLoader implements FabricLoader {
             }
         }
         for (File f : urls) {
-            JsMacrosEarlyRiser.addURL.invoke(JsMacrosEarlyRiser.classLoader, f.toURI().toURL());
+            ((LaunchClassLoader) FakeFabricLoader.class.getClassLoader()).addURL(f.toURI().toURL());
         }
         instance = this;
     }

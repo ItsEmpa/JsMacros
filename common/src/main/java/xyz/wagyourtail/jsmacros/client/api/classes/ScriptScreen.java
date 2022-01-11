@@ -1,7 +1,8 @@
 package xyz.wagyourtail.jsmacros.client.api.classes;
 
-import net.minecraft.client.gui.widget.AbstractButtonWidget;
-import net.minecraft.text.LiteralText;
+import net.minecraft.client.gui.GuiButton;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.util.ChatComponentText;
 import xyz.wagyourtail.jsmacros.client.JsMacros;
 import xyz.wagyourtail.jsmacros.client.api.sharedclasses.PositionCommon;
 import xyz.wagyourtail.jsmacros.client.api.sharedinterfaces.IScreen;
@@ -24,12 +25,12 @@ public class ScriptScreen extends BaseScreen {
     private MethodWrapper<PositionCommon.Pos3D, Object, Object, ?> onRender;
     
     public ScriptScreen(String title, boolean dirt) {
-        super(new LiteralText(title), null);
+        super(new ChatComponentText(title), null);
         this.bgStyle = dirt ? 0 : 1;
     }
 
     @Override
-    protected void init() {
+    public void init() {
         BaseScreen prev = JsMacros.prevScreen;
         super.init();
         JsMacros.prevScreen = prev;
@@ -40,7 +41,7 @@ public class ScriptScreen extends BaseScreen {
      * @since 1.4.0
      */
     public void setParent(IScreen parent) {
-        this.parent = (net.minecraft.client.gui.screen.Screen) parent;
+        this.parent = (GuiScreen) parent;
     }
 
     /**
@@ -58,12 +59,12 @@ public class ScriptScreen extends BaseScreen {
         if (bgStyle == 0) this.renderDirtBackground(0);
         else if (bgStyle == 1) this.renderBackground(0);
 
-        drawCenteredString(this.font, this.title.asFormattedString(), this.width / 2, 20, 0xFFFFFF);
+        drawCenteredString(this.textRenderer, this.title.asFormattedString(), this.width / 2, 20, 0xFFFFFF);
 
         super.render(mouseX, mouseY, delta);
 
-        for (AbstractButtonWidget button : this.buttons) {
-            button.render(mouseX, mouseY, delta);
+        for (GuiButton button : this.buttons) {
+            button.render(client, mouseX, mouseY);
         }
 
         ((IScreen) this).onRenderInternal(mouseX, mouseY, delta);

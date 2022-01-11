@@ -1,13 +1,14 @@
 package xyz.wagyourtail.jsmacros.client.api.helpers;
 
-import net.minecraft.entity.passive.VillagerEntity;
+import net.minecraft.entity.passive.EntityVillager;
+import xyz.wagyourtail.jsmacros.client.mixins.access.MixinVillager;
 
 /**
  * @since 1.6.3
  */
-public class VillagerEntityHelper extends MerchantEntityHelper<VillagerEntity> {
+public class VillagerEntityHelper extends MerchantEntityHelper<EntityVillager> {
 
-    public VillagerEntityHelper(VillagerEntity e) {
+    public VillagerEntityHelper(EntityVillager e) {
         super(e);
     }
 
@@ -15,8 +16,8 @@ public class VillagerEntityHelper extends MerchantEntityHelper<VillagerEntity> {
      * @since 1.6.3
      * @return
      */
-    public String getProfession() {
-        return base.getVillagerData().getProfession().toString();
+    public int getProfession() {
+        return base.profession();
     }
 
     /**
@@ -24,7 +25,7 @@ public class VillagerEntityHelper extends MerchantEntityHelper<VillagerEntity> {
      * @return
      */
     public String getStyle() {
-        return base.getVillagerData().getType().toString();
+        return "";
     }
 
     /**
@@ -32,7 +33,7 @@ public class VillagerEntityHelper extends MerchantEntityHelper<VillagerEntity> {
      * @return
      */
     public int getLevel() {
-        return base.getVillagerData().getLevel();
+        return ((MixinVillager) base).getCareerLevel();
     }
 
     @Override

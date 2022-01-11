@@ -1,8 +1,8 @@
 package xyz.wagyourtail.jsmacros.client.api.library.impl;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ConnectScreen;
-import net.minecraft.network.ServerAddress;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.GuiConnecting;
+import net.minecraft.client.multiplayer.ServerAddress;
 import xyz.wagyourtail.jsmacros.client.api.helpers.OptionsHelper;
 import xyz.wagyourtail.jsmacros.client.tick.TickSync;
 import xyz.wagyourtail.jsmacros.core.Core;
@@ -21,7 +21,7 @@ import xyz.wagyourtail.jsmacros.core.library.Library;
 @Library("Client")
 @SuppressWarnings("unused")
 public class FClient extends BaseLibrary {
-    private static final MinecraftClient mc = MinecraftClient.getInstance();
+    private static final Minecraft mc = Minecraft.getInstance();
     /**
      * Don't touch this plz xd.
      */
@@ -32,7 +32,7 @@ public class FClient extends BaseLibrary {
     * @since 1.0.0 (was in the {@code jsmacros} library until 1.2.9)
      * @return the raw minecraft client class, it may be useful to use <a target="_blank" href="https://wagyourtail.xyz/Projects/Minecraft%20Mappings%20Viewer/App">Minecraft Mappings Viewer</a> for this.
      */
-    public MinecraftClient getMinecraft() {
+    public Minecraft getMinecraft() {
         return mc;
     }
 
@@ -104,8 +104,8 @@ public class FClient extends BaseLibrary {
     public void connect(String ip, int port) {
         mc.execute(() -> {
             if (mc.world != null) mc.world.disconnect();
-            mc.joinWorld(null);
-            mc.openScreen(new ConnectScreen(null, mc, ip, port));
+            mc.connect(null);
+            mc.openScreen(new GuiConnecting(null, mc, ip, port));
         });
     }
     

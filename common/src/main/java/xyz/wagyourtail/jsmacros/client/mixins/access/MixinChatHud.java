@@ -1,9 +1,9 @@
 package xyz.wagyourtail.jsmacros.client.mixins.access;
 
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.hud.ChatHud;
-import net.minecraft.client.gui.hud.ChatHudLine;
-import net.minecraft.text.Text;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.ChatLine;
+import net.minecraft.client.gui.GuiNewChat;
+import net.minecraft.util.IChatComponent;
 import org.spongepowered.asm.mixin.*;
 import org.spongepowered.asm.mixin.injection.*;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -13,35 +13,30 @@ import java.util.Collections;
 import java.util.List;
 import java.util.function.Predicate;
 
-@Mixin(ChatHud.class)
+@Mixin(GuiNewChat.class)
 public abstract class MixinChatHud implements IChatHud {
 
-    @Shadow
-    public void addMessage(Text message, int messageId) {}
-
-    @Shadow
-    private void addMessage(Text message, int messageId, int timestamp, boolean refresh) {}
-
-    @Shadow @Final private List<ChatHudLine> messages;
-
-    @Shadow
-    public abstract void removeMessage(int messageId);
+    @Shadow public abstract void addMessage(IChatComponent chatComponent, int chatLineId);
 
     @Mutable
-    @Shadow @Final private List<String> messageHistory;
+    @Shadow @Final private List<ChatLine> messages;
+
+    @Shadow public abstract void removeMessage(int p_146242_1_);
+
+    @Shadow protected abstract void addMessage(IChatComponent chatComponent, int chatLineId, int p_146237_3_, boolean p_146237_4_);
 
     @Inject(method = "<init>", at = @At("RETURN"))
-    public void onInit(MinecraftClient client, CallbackInfo ci) {
-        messageHistory = Collections.synchronizedList(messageHistory);
+    public void onInit(Minecraft client, CallbackInfo ci) {
+        messages = Collections.synchronizedList(messages);
     }
 
     @Override
-    public void jsmacros_addMessageBypass(Text message) {
+    public void jsmacros_addMessageBypass(IChatComponent message) {
         addMessage(message, 0);
     }
 
     @Override
-    public List<ChatHudLine> jsmacros_getMessages() {
+    public List<ChatLine> jsmacros_getMessages() {
         return messages;
     }
 
@@ -55,13 +50,13 @@ public abstract class MixinChatHud implements IChatHud {
 
 
     @Override
-    public void jsmacros_addMessageAtIndexBypass(Text message, int index, int time) {
+    public void jsmacros_addMessageAtIndexBypass(IChatComponent message, int index, int time) {
         positionOverride.set(index);
         addMessage(message, 0, time, false);
         positionOverride.set(0);
     }
 
-    @ModifyArg(method = "addMessage(Lnet/minecraft/text/Text;IIZ)V", at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V", ordinal = 1))
+    @ModifyArg(method = "addMessage(Lnet/minecraft/util/IChatComponent;IIZ)V", at = @At(value = "INVOKE", target = "Ljava/util/List;add(ILjava/lang/Object;)V", ordinal = 1,  remap = false))
     public int overrideMessagePos(int pos) {
         return positionOverride.get();
     }
@@ -72,13 +67,15 @@ public abstract class MixinChatHud implements IChatHud {
     }
 
     @Override
-    public void jsmacros_removeMessageByText(Text text) {
+    public void jsmacros_removeMessageByText(IChatComponent text) {
         messages.removeIf((c) -> c.getText().equals(text));
     }
 
     @Override
-    public void jsmacros_removeMessagePredicate(Predicate<ChatHudLine> textfilter) {
+    public void jsmacros_removeMessagePredicate(Predicate<ChatLine> textfilter) {
         messages.removeIf(textfilter);
     }
 
 }
+
+

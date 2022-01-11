@@ -1,20 +1,19 @@
 package xyz.wagyourtail.jsmacros.client.mixins.events;
 
 import com.mojang.authlib.GameProfile;
-import net.minecraft.block.entity.SignBlockEntity;
-import net.minecraft.client.MinecraftClient;
-import net.minecraft.client.gui.screen.ingame.SignEditScreen;
-import net.minecraft.client.input.Input;
-import net.minecraft.client.network.AbstractClientPlayerEntity;
-import net.minecraft.client.network.ClientPlayNetworkHandler;
-import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.options.KeyBinding;
-import net.minecraft.client.util.InputUtil;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.damage.DamageSource;
-import net.minecraft.network.packet.c2s.play.UpdateSignC2SPacket;
-import net.minecraft.text.LiteralText;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.entity.AbstractClientPlayer;
+import net.minecraft.client.entity.EntityPlayerSP;
+import net.minecraft.client.gui.inventory.GuiEditSign;
+import net.minecraft.client.network.NetHandlerPlayClient;
+import net.minecraft.client.settings.KeyBinding;
+import net.minecraft.network.play.client.C12PacketUpdateSign;
+import net.minecraft.tileentity.TileEntitySign;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.DamageSource;
+import net.minecraft.util.IChatComponent;
+import net.minecraft.util.MovementInput;
+import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -31,60 +30,50 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@Mixin(ClientPlayerEntity.class)
-abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
-
+@Mixin(EntityPlayerSP.class)
+abstract class MixinClientPlayerEntity extends AbstractClientPlayer {
     @Shadow
-    public Input input;
+    protected Minecraft client;
+
     @Shadow
     @Final
-    public ClientPlayNetworkHandler networkHandler;
-    @Shadow
-    @Final
-    protected MinecraftClient client;
-
-    // IGNORE
-    public MixinClientPlayerEntity(ClientWorld world, GameProfile profile) {
-        super(world, profile);
-    }
+    public NetHandlerPlayClient networkHandler;
 
     @Shadow
-    public abstract boolean isHoldingSneakKey();
+    public MovementInput input;
+
+    @Shadow public abstract boolean isSneaking();
 
     @Override
     public void setAir(int air) {
         if (air % 20 == 0) new EventAirChange(air);
         super.setAir(air);
     }
-    
-    @Inject(at = @At("HEAD"), method="method_3145")
+
+    @Inject(at = @At("HEAD"), method="setExperience")
     public void onSetExperience(float progress, int total, int level, CallbackInfo info) {
         new EventEXPChange(progress, total, level);
     }
 
-    @Inject(at = @At("HEAD"), method = "damage")
-    private void onApplyDamage(DamageSource source, float amount, CallbackInfoReturnable<Boolean> cir) {
+    @Inject(at = @At("TAIL"), method="damage")
+    private void onApplyDamage(DamageSource source, float amount, final CallbackInfoReturnable<Boolean> info) {
         int damage = Math.round(amount * 2) / 2;
         if (damage == 0) return;
         new EventDamage(source, this.getHealth() - damage, damage);
     }
 
-    @Inject(at = @At("HEAD"), method = "openEditSignScreen", cancellable = true)
-    public void onOpenEditSignScreen(SignBlockEntity sign, CallbackInfo info) {
+    @Inject(at = @At("HEAD"), method="openEditSignScreen", cancellable= true)
+    public void onOpenEditSignScreen(TileEntitySign sign, CallbackInfo info) {
         List<String> lines = new ArrayList<>(Arrays.asList("", "", "", ""));
         final EventSignEdit event = new EventSignEdit(lines, sign.getPos().getX(), sign.getPos().getY(), sign.getPos().getZ());
         lines = event.signText;
         if (event.closeScreen) {
             for (int i = 0; i < 4; ++i) {
-                sign.setTextOnRow(i, new LiteralText(lines.get(i)));
+                sign.field_145915_a[i] = new ChatComponentText(lines.get(i));
             }
             sign.markDirty();
-            networkHandler.sendPacket(new UpdateSignC2SPacket(sign.getPos(),
-                new LiteralText(lines.get(0)),
-                new LiteralText(lines.get(1)),
-                new LiteralText(lines.get(2)),
-                new LiteralText(lines.get(3))
-            ));
+            networkHandler.sendPacket(new C12PacketUpdateSign(sign.getPos(), lines.stream().map(ChatComponentText::new).toArray(
+                IChatComponent[]::new)));
             info.cancel();
             return;
         }
@@ -97,7 +86,7 @@ abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
             }
         } //else
         if (cancel) {
-            final SignEditScreen signScreen = new SignEditScreen(sign);
+            final GuiEditSign signScreen = new GuiEditSign(sign);
             client.openScreen(signScreen);
             for (int i = 0; i < 4; ++i) {
                 ((ISignEditScreen) signScreen).jsmacros_setLine(i, lines.get(i));
@@ -106,7 +95,7 @@ abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
         }
     }
 
-    @Inject(method = "tickMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/tutorial/TutorialManager;onMovement(Lnet/minecraft/client/input/Input;)V"))
+    @Inject(method = "tickMovement", at = @At(value = "INVOKE", target = "Lnet/minecraft/util/MovementInput;func_78898_a()V", shift = At.Shift.AFTER))
     public void overwriteInputs(CallbackInfo ci) {
         PlayerInput moveInput = MovementQueue.tick(client.player);
         if (moveInput == null) {
@@ -116,26 +105,14 @@ abstract class MixinClientPlayerEntity extends AbstractClientPlayerEntity {
         this.input.movementSideways = moveInput.movementSideways;
         this.input.jumping = moveInput.jumping;
         this.input.sneaking = moveInput.sneaking;
-        KeyBinding.setKeyPressed(InputUtil.fromName(this.client.options.keySprint.getName()), moveInput.sprinting);
+        KeyBinding.setKeyPressed(this.client.options.keySprint.getCode(), moveInput.sprinting);
         this.yaw = moveInput.yaw;
         this.pitch = moveInput.pitch;
-
-        if (this.isHoldingSneakKey()) {
-            // Don't ask me, this is the way minecraft does it.
-            this.input.movementSideways = (float) ((double) this.input.movementSideways * 0.3D);
-            this.input.movementForward = (float) ((double) this.input.movementForward * 0.3D);
-        }
     }
 
-    @Inject(method = "startRiding", at = @At(value = "RETURN", ordinal = 1))
-    public void onStartRiding(Entity entity, boolean force, CallbackInfoReturnable<Boolean> cir) {
-        new EventRiding(true, entity);
-    }
 
-    @Inject(method = "stopRiding", at = @At("HEAD"))
-    public void onStopRiding(CallbackInfo ci) {
-        if (this.getVehicle() != null)
-            new EventRiding(false, this.getVehicle());
+    public MixinClientPlayerEntity(World worldIn, GameProfile playerProfile) {
+        super(worldIn, playerProfile);
     }
 
     @Inject(method = "dropSelectedItem", at = @At("HEAD"), cancellable = true)

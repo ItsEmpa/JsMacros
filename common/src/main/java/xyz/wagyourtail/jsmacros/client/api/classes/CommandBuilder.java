@@ -1,12 +1,32 @@
 package xyz.wagyourtail.jsmacros.client.api.classes;
 
+import com.google.gson.JsonSyntaxException;
+import com.mojang.brigadier.CommandDispatcher;
+import com.mojang.brigadier.ParseResults;
 import com.mojang.brigadier.StringReader;
 import com.mojang.brigadier.arguments.*;
+import com.mojang.brigadier.builder.ArgumentBuilder;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.builder.RequiredArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.BuiltInExceptions;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
+import com.mojang.brigadier.exceptions.DynamicCommandExceptionType;
 import com.mojang.brigadier.exceptions.SimpleCommandExceptionType;
-import net.minecraft.command.arguments.*;
-import net.minecraft.text.TranslatableText;
+import com.mojang.brigadier.suggestion.Suggestion;
+import com.mojang.brigadier.suggestion.Suggestions;
+import com.mojang.brigadier.suggestion.SuggestionsBuilder;
+import com.mojang.brigadier.tree.LiteralCommandNode;
+import net.minecraft.block.Block;
+import net.minecraft.command.*;
+import net.minecraft.item.Item;
+import net.minecraft.nbt.JsonToNBT;
+import net.minecraft.nbt.NBTException;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.*;
+import net.minecraftforge.client.ClientCommandHandler;
+import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import xyz.wagyourtail.jsmacros.client.api.helpers.CommandContextHelper;
 import xyz.wagyourtail.jsmacros.client.config.EventLockWatchdog;
 import xyz.wagyourtail.jsmacros.core.Core;
@@ -16,32 +36,52 @@ import xyz.wagyourtail.jsmacros.core.event.BaseEvent;
 import xyz.wagyourtail.jsmacros.core.event.IEventListener;
 import xyz.wagyourtail.jsmacros.core.language.EventContainer;
 
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Stack;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.Function;
 import java.util.function.Supplier;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * @since 1.4.2
  */
- @SuppressWarnings("unused")
-public abstract class CommandBuilder {
+@SuppressWarnings("unused")
+public class CommandBuilder {
+    private static final CommandDispatcher<ICommandSender> dispatcher = new CommandDispatcher<>();
+    private static final BuiltInExceptions exception = new BuiltInExceptions();
+    private final LiteralArgumentBuilder<ICommandSender> head;
+    private final Stack<ArgumentBuilder<ICommandSender, ?>> pointer = new Stack<>();
 
-    /**
-     * name -> builder
-     */
-    public static Function<String, CommandBuilder> createNewBuilder;
+    public CommandBuilder(String name) {
+        head = LiteralArgumentBuilder.literal(name);
+        pointer.push(head);
+    }
 
-    protected abstract void argument(String name, Supplier<ArgumentType<?>> type);
+    private void argument(String name, Supplier<ArgumentType<?>> type) {
+        ArgumentBuilder<ICommandSender, ?> arg = RequiredArgumentBuilder.argument(name, type.get());
 
-    public abstract CommandBuilder literalArg(String name);
+        pointer.push(arg);
+    }
+
+    public CommandBuilder literalArg(String name) {
+        ArgumentBuilder<ICommandSender, ?> arg = LiteralArgumentBuilder.literal(name);
+
+        pointer.push(arg);
+        return this;
+    }
 
     public CommandBuilder angleArg(String name) {
-        throw new NullPointerException("does not exist in <=1.16.1");
+        throw new NullPointerException("does not exist in 1.16.1");
     }
 
     public CommandBuilder blockArg(String name) {
-        argument(name, BlockStateArgumentType::blockState);
+        argument(name, BlockArgumentType::block);
         return this;
     }
 
@@ -51,7 +91,7 @@ public abstract class CommandBuilder {
     }
 
     public CommandBuilder colorArg(String name) {
-        argument(name, ColorArgumentType::color);
+        argument(name, ColorArgumentType::new);
         return this;
     }
 
@@ -81,7 +121,7 @@ public abstract class CommandBuilder {
     }
 
     public CommandBuilder identifierArg(String name) {
-        argument(name, IdentifierArgumentType::identifier);
+        argument(name, IdentifierArgumentType::new);
         return this;
     }
 
@@ -91,22 +131,23 @@ public abstract class CommandBuilder {
     }
 
     public CommandBuilder intArg(String name, int min, int max) {
+
         argument(name, () -> IntegerArgumentType.integer(min, max));
         return this;
     }
 
     public CommandBuilder intRangeArg(String name) {
-        argument(name, NumberRangeArgumentType::numberRange);
+        argument(name, NumberRangeArgumentType.IntegerRangeArgumentType::new);
         return this;
     }
 
     public CommandBuilder itemArg(String name) {
-        argument(name, ItemStackArgumentType::itemStack);
+        argument(name, ItemArgumentType::new);
         return this;
     }
 
     public CommandBuilder nbtArg(String name) {
-        argument(name, NbtCompoundTagArgumentType::nbtCompound);
+        argument(name, NBTArgumentType::new);
         return this;
     }
 
@@ -126,12 +167,12 @@ public abstract class CommandBuilder {
     }
 
     public CommandBuilder textArgType(String name) {
-        argument(name, TextArgumentType::text);
+        argument(name, TextArgumentType::new);
         return this;
     }
 
     public CommandBuilder uuidArgType(String name) {
-        throw new NullPointerException("does not exist in <=1.15.2");
+        throw new NullPointerException("does not exist in 1.15.2");
     }
 
     public CommandBuilder regexArgType(String name, String regex, String flags) {
@@ -168,33 +209,40 @@ public abstract class CommandBuilder {
      *
      * @return
      */
-    public abstract CommandBuilder executes(MethodWrapper<CommandContextHelper, Object, Boolean, ?> callback);
+    public CommandBuilder executes(MethodWrapper<CommandContextHelper, Object, Boolean, ?> callback) {
+        pointer.peek().executes((ctx) -> {
+            EventContainer<?> lock = new EventContainer<>(callback.getCtx());
+            EventLockWatchdog.startWatchdog(lock, new IEventListener() {
+                @Override
+                public EventContainer<?> trigger(BaseEvent event) {
+                    return null;
+                }
 
-    protected <S> int internalExecutes(CommandContext<S> context, MethodWrapper<CommandContextHelper, Object, Boolean, ?> callback) {
-        EventContainer<?> lock = new EventContainer<>(callback.getCtx());
-        EventLockWatchdog.startWatchdog(lock, new IEventListener() {
-            @Override
-            public EventContainer<?> trigger(BaseEvent event) {
-                return null;
+                @Override
+                public String toString() {
+                    return "CommandBuilder{\"called_by\": " + callback.getCtx().getTriggeringEvent().toString() + "}";
+                }
+            }, Core.getInstance().config.getOptions(CoreConfigV2.class).maxLockTime);
+            boolean success = false;
+            try {
+                callback.apply(new CommandContextHelper(ctx));
+            } catch (Throwable e) {
+                e.printStackTrace();
             }
-
-            @Override
-            public String toString() {
-                return "CommandBuilder{\"called_by\": " + callback.getCtx().getTriggeringEvent().toString() + "}";
-            }
-        }, Core.getInstance().config.getOptions(CoreConfigV2.class).maxLockTime);
-        boolean success = false;
-        try {
-            success = callback.apply(new CommandContextHelper(context));
-        } catch (Throwable e) {
-            e.printStackTrace();
-        }
-        lock.releaseLock();
-        return success ? 1 : 0;
+            lock.releaseLock();
+            return success ? 1 : 0;
+        });
+        return this;
     }
 
 
-    public abstract CommandBuilder or();
+    public CommandBuilder or() {
+        if (pointer.size() > 1) {
+            ArgumentBuilder<ICommandSender, ?> oldarg = pointer.pop();
+            pointer.peek().then(oldarg);
+        }
+        return this;
+    }
 
     /**
      * name overload for {@link #or()} to work around language keyword restrictions
@@ -206,7 +254,14 @@ public abstract class CommandBuilder {
         return this;
     }
 
-    public abstract CommandBuilder or(int argumentLevel);
+    public CommandBuilder or(int argumentLevel) {
+        argumentLevel = Math.max(1, argumentLevel);
+        while (pointer.size() > argumentLevel) {
+            ArgumentBuilder<ICommandSender, ?> oldarg = pointer.pop();
+            pointer.peek().then(oldarg);
+        }
+        return this;
+    }
 
     /**
      * name overload for {@link #or(int)} to work around language keyword restrictions
@@ -217,6 +272,62 @@ public abstract class CommandBuilder {
     public CommandBuilder otherwise(int argLevel) {
         or(argLevel);
         return this;
+    }
+
+    public void register() {
+        or(1);
+        LiteralCommandNode<ICommandSender> node = dispatcher.register(head);
+        ClientCommandHandler.instance.registerCommand(new ICommand() {
+            @Override
+            public String getCommandName() {
+                return node.getName();
+            }
+
+            @Override
+            public String getUsageTranslationKey(ICommandSender sender) {
+                return node.getUsageText();
+            }
+
+            @Override
+            public List<String> getAliases() {
+                return new ArrayList<>();
+            }
+
+            @Override
+            public void execute(ICommandSender sender, String[] args) throws CommandException {
+                try {
+                    dispatcher.execute(getCommandName() + (args.length > 0 ? " " + String.join(" ", args) : ""), sender);
+                } catch (CommandSyntaxException e) {
+                    throw new CommandException(e.getMessage());
+                }
+            }
+
+            @Override
+            public boolean isAccessible(ICommandSender sender) {
+                return true;
+            }
+
+            @Override
+            public List<String> getAutoCompleteHints(ICommandSender sender, String[] args, BlockPos pos) {
+                ParseResults<ICommandSender> pr = dispatcher.parse(getCommandName() + (args.length > 0 ? " " + String.join(" ", args) : ""), sender);
+                try {
+                    return dispatcher.getCompletionSuggestions(pr).get().getList().stream().map(Suggestion::getText).collect(Collectors.toList());
+                } catch (InterruptedException | ExecutionException e) {
+                    e.printStackTrace();
+                    throw new RuntimeException("error");
+                }
+            }
+
+            @Override
+            public boolean isUsernameAtIndex(String[] args, int index) {
+                return false;
+            }
+
+            @Override
+            public int compareTo(@NotNull ICommand o) {
+                return getCommandName().compareTo(o.getCommandName());
+            }
+        });
     }
 
     private static class RegexArgType implements ArgumentType<String[]> {
@@ -239,10 +350,305 @@ public abstract class CommandBuilder {
                 reader.setCursor(i + m.group(0).length());
                 return args;
             } else {
-                throw new SimpleCommandExceptionType(new TranslatableText("jsmacros.commandfailedregex", "/" + pattern.pattern() + "/")).createWithContext(reader);
+                throw new SimpleCommandExceptionType(new ChatComponentTranslation("jsmacros.commandfailedregex", "/" + pattern.pattern() + "/")::getString).createWithContext(reader);
             }
         }
     }
 
-    public abstract void register();
+    private static class BlockArgumentType implements ArgumentType<Block> {
+
+
+        @Override
+        public Block parse(StringReader reader) throws CommandSyntaxException {
+            try {
+                return CommandBase.getBlock(null, reader.readStringUntil(' '));
+            } catch (NumberInvalidException e) {
+                throw exception.readerInvalidInt().create(e.getMessage());
+            }
+        }
+
+        @Override
+        public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
+            return CompletableFuture.supplyAsync(() -> {
+                List<Suggestion> sugs = CommandBase.func_175762_a(new String[] {builder.getRemaining()}, Block.REGISTRY.keySet()).stream().map(e -> new Suggestion(null, e)).collect(Collectors.toList());
+                return new Suggestions(null, sugs);
+            });
+        }
+
+        public static BlockArgumentType block() {
+            return new BlockArgumentType();
+        }
+    }
+
+    public static class ColorArgumentType implements ArgumentType<EnumChatFormatting> {
+
+        @Override
+        public EnumChatFormatting parse(StringReader reader) throws CommandSyntaxException {
+            try {
+                return EnumChatFormatting.byName(reader.readStringUntil(' '));
+            } catch (IllegalArgumentException e) {
+                throw exception.readerExpectedSymbol().create(e.getMessage());
+            }
+        }
+
+        @Override
+        public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
+            return CompletableFuture.supplyAsync(() -> {
+                List<Suggestion> sugs = CommandBase.func_175762_a(new String[] {builder.getRemaining()}, Arrays.stream(EnumChatFormatting.values()).map(EnumChatFormatting::getName).collect(Collectors.toList())).stream().map(e -> new Suggestion(null, e)).collect(Collectors.toList());
+                return new Suggestions(null, sugs);
+            });
+        }
+
+    }
+
+    public static class NBTArgumentType implements ArgumentType<NBTTagCompound> {
+
+        @Override
+        public NBTTagCompound parse(StringReader reader) throws CommandSyntaxException {
+            try {
+                int cursor = reader.getCursor();
+                String s = reader.getRemaining();
+                if (!s.startsWith("{")) throw exception.readerExpectedSymbol().create("{");
+                Matcher m = Pattern.compile("[{}]").matcher(s);
+                int i = 0;
+                while (m.find()) {
+                    if (m.group().equals("{")) ++i;
+                    else if (--i == 0) {
+                        break;
+                    }
+                }
+                reader.setCursor(cursor + m.end());
+                return JsonToNBT.parse(s.substring(0, m.end()));
+            } catch (NBTException e) {
+                throw exception.readerExpectedSymbol().create(e.getStackTrace());
+            }
+        }
+    }
+
+    public static class TextArgumentType implements ArgumentType<IChatComponent> {
+
+        @Override
+        public IChatComponent parse(StringReader reader) throws CommandSyntaxException {
+            int cursor = reader.getCursor();
+            String s = reader.getRemaining();
+            if (s.startsWith("\"")) {
+                return new ChatComponentText(reader.readQuotedString());
+            }
+            if (!s.startsWith("{") && !s.startsWith("[")) throw exception.readerExpectedSymbol().create("{");
+            Matcher m = Pattern.compile("[\\[\\]{}]").matcher(s);
+            int i = 0;
+            while (m.find()) {
+                if (m.group().equals("{") || m.group().equals("[")) ++i;
+                else if (--i == 0) {
+                    break;
+                }
+            }
+            reader.setCursor(cursor + m.end());
+            try {
+                return IChatComponent.Serializer.deserialize(s.substring(0, m.end()));
+            } catch (JsonSyntaxException e) {
+                throw exception.readerExpectedSymbol().create(e.getMessage());
+            }
+        }
+    }
+
+    public static class ItemArgumentType implements ArgumentType<Item> {
+
+        @Override
+        public Item parse(StringReader reader) throws CommandSyntaxException {
+            try {
+                return CommandBase.getItem(null, reader.readStringUntil(' '));
+            } catch (NumberInvalidException e) {
+                throw exception.readerInvalidInt().create(e.getMessage());
+            }
+        }
+
+        @Override
+        public <S> CompletableFuture<Suggestions> listSuggestions(CommandContext<S> context, SuggestionsBuilder builder) {
+            return CompletableFuture.supplyAsync(() -> {
+                List<Suggestion> sugs = CommandBase.func_175762_a(new String[] {builder.getRemaining()}, Item.REGISTRY.keySet()).stream().map(e -> new Suggestion(null, e)).collect(Collectors.toList());
+                return new Suggestions(null, sugs);
+            });
+        }
+
+    }
+
+    public static class IdentifierArgumentType implements ArgumentType<ResourceLocation> {
+
+        @Override
+        public ResourceLocation parse(StringReader reader) throws CommandSyntaxException {
+            return new ResourceLocation(reader.readStringUntil(' '));
+        }
+
+    }
+
+    public interface NumberRangeArgumentType<T extends NumberRangeArgumentType.NumberRange<?>> extends ArgumentType<T> {
+
+
+        class FloatRangeArgumentType implements NumberRangeArgumentType<NumberRange.FloatRange> {
+
+            @Override
+            public NumberRange.FloatRange parse(StringReader reader) throws CommandSyntaxException {
+                return NumberRange.FloatRange.parse(reader);
+            }
+
+        }
+
+        class IntegerRangeArgumentType implements NumberRangeArgumentType<NumberRange.IntRange> {
+
+            @Override
+            public NumberRange.IntRange parse(StringReader reader) throws CommandSyntaxException {
+                return NumberRange.IntRange.parse(reader);
+            }
+
+        }
+
+
+        abstract class NumberRange<U> {
+            protected final U min;
+            private final U max;
+
+            protected NumberRange(U min, U max) {
+                this.min = min;
+                this.max = max;
+            }
+
+            public U getMin() {
+                return min;
+            }
+
+            public U getMax() {
+                return max;
+            }
+
+            public boolean isDummy() {
+                return this.min == null && this.max == null;
+            }
+
+            protected static <T extends Number, R extends NumberRange<T>> R parse(StringReader commandReader, CommandFactory<T, R> commandFactory, Function<String, T> converter, Supplier<DynamicCommandExceptionType> exceptionTypeSupplier, Function<T, T> mapper) throws CommandSyntaxException {
+                if (!commandReader.canRead()) {
+                    throw exception.dispatcherUnknownArgument().create();
+                } else {
+                    int i = commandReader.getCursor();
+
+                    try {
+                        T number = map(fromStringReader(commandReader, converter, exceptionTypeSupplier), mapper);
+                        T number3;
+                        if (commandReader.canRead(2) && commandReader.peek() == '.' && commandReader.peek(1) == '.') {
+                            commandReader.skip();
+                            commandReader.skip();
+                            number3 = map(fromStringReader(commandReader, converter, exceptionTypeSupplier), mapper);
+                            if (number == null && number3 == null) {
+                                throw exception.dispatcherParseException().create("ended early");
+                            }
+                        } else {
+                            number3 = number;
+                        }
+
+                        if (number == null && number3 == null) {
+                            throw exception.dispatcherParseException().create("ended early");
+                        } else {
+                            return commandFactory.create(commandReader, number, number3);
+                        }
+                    } catch (CommandSyntaxException var8) {
+                        commandReader.setCursor(i);
+                        throw new CommandSyntaxException(var8.getType(), var8.getRawMessage(), var8.getInput(), i);
+                    }
+                }
+            }
+
+            @Nullable
+            private static <T extends Number> T fromStringReader(StringReader reader, Function<String, T> converter, Supplier<DynamicCommandExceptionType> exceptionTypeSupplier) throws CommandSyntaxException {
+                int i = reader.getCursor();
+
+                while(reader.canRead() && isNextCharValid(reader)) {
+                    reader.skip();
+                }
+
+                String string = reader.getString().substring(i, reader.getCursor());
+                if (string.isEmpty()) {
+                    return null;
+                } else {
+                    try {
+                        return converter.apply(string);
+                    } catch (NumberFormatException var6) {
+                        throw exceptionTypeSupplier.get().createWithContext(reader, string);
+                    }
+                }
+            }
+
+            private static boolean isNextCharValid(StringReader reader) {
+                char c = reader.peek();
+                if ((c < '0' || c > '9') && c != '-') {
+                    if (c != '.') {
+                        return false;
+                    } else {
+                        return !reader.canRead(2) || reader.peek(1) != '.';
+                    }
+                } else {
+                    return true;
+                }
+            }
+
+            @Nullable
+            private static <T> T map(@Nullable T object, Function<T, T> function) {
+                return object == null ? null : function.apply(object);
+            }
+
+
+
+            public static class FloatRange extends NumberRange<Float> {
+
+                protected FloatRange(Float min, Float max) {
+                    super(min, max);
+                }
+
+                private static NumberRange.FloatRange create(StringReader reader, @Nullable Float min, @Nullable Float max) throws CommandSyntaxException {
+                    if (min != null && max != null && min > max) {
+                        throw exception.readerInvalidFloat().create(max);
+                    } else {
+                        return new NumberRange.FloatRange(min, max);
+                    }
+                }
+
+                public static NumberRange.FloatRange parse(StringReader reader) throws CommandSyntaxException {
+                    return parse(reader, (float_) -> float_);
+                }
+
+                public static NumberRange.FloatRange parse(StringReader reader, Function<Float, Float> mapper) throws CommandSyntaxException {
+                    return parse(reader, FloatRange::create, Float::parseFloat, CommandSyntaxException.BUILT_IN_EXCEPTIONS::readerInvalidFloat, mapper);
+                }
+            }
+
+            public static class IntRange extends NumberRange<Integer> {
+
+                protected IntRange(Integer min, Integer max) {
+                    super(min, max);
+                }
+
+                private static NumberRange.IntRange parse(StringReader reader, @Nullable Integer min, @Nullable Integer max) throws CommandSyntaxException {
+                    if (min != null && max != null && min > max) {
+                        throw exception.readerInvalidInt().create(max);
+                    } else {
+                        return new NumberRange.IntRange(min, max);
+                    }
+                }
+
+                public static NumberRange.IntRange parse(StringReader reader) throws CommandSyntaxException {
+                    return fromStringReader(reader, (integer) -> integer);
+                }
+
+                public static NumberRange.IntRange fromStringReader(StringReader reader, Function<Integer, Integer> converter) throws CommandSyntaxException {
+                    //this is not redundant, it fails to compile without -_-
+                    return NumberRange.<Integer, IntRange>parse(reader, IntRange::parse, Integer::parseInt, CommandSyntaxException.BUILT_IN_EXCEPTIONS::readerInvalidInt, converter);
+                }
+
+            }
+        }
+
+        @FunctionalInterface
+        interface CommandFactory<T extends Number, R extends NumberRange<T>> {
+            R create(StringReader reader, @Nullable T min, @Nullable T max) throws CommandSyntaxException;
+        }
+    }
 }

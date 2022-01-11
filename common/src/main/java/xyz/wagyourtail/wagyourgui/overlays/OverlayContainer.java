@@ -1,26 +1,26 @@
 package xyz.wagyourtail.wagyourgui.overlays;
 
-import net.minecraft.client.font.TextRenderer;
-import net.minecraft.client.gui.Element;
-import net.minecraft.client.gui.widget.AbstractButtonWidget;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiButton;
 import xyz.wagyourtail.wagyourgui.containers.MultiElementContainer;
 import xyz.wagyourtail.wagyourgui.elements.Scrollbar;
 
-import javax.annotation.Nullable;
 import java.util.HashMap;
 import java.util.Map;
 
 public abstract class OverlayContainer extends MultiElementContainer<IOverlayParent> implements IOverlayParent {
-    public Map<AbstractButtonWidget, Boolean> savedBtnStates = new HashMap<>();
+    protected static final Minecraft mc = Minecraft.getInstance();
+    public Map<GuiButton, Boolean> savedBtnStates = new HashMap<>();
     public Scrollbar scroll;
     protected OverlayContainer overlay;
     
-    public OverlayContainer(int x, int y, int width, int height, TextRenderer textRenderer, IOverlayParent parent) {
+    public OverlayContainer(int x, int y, int width, int height, FontRenderer textRenderer, IOverlayParent parent) {
         super(x, y, width, height, textRenderer, parent);
     }
     
     @Override
-    public void removeButton(AbstractButtonWidget btn) {
+    public void removeButton(GuiButton btn) {
         this.buttons.remove(btn);
         parent.removeButton(btn);
     }
@@ -42,7 +42,7 @@ public abstract class OverlayContainer extends MultiElementContainer<IOverlayPar
             return;
         }
         if (disableButtons) {
-            for (AbstractButtonWidget b : buttons) {
+            for (GuiButton b : buttons) {
                 overlay.savedBtnStates.put(b, b.active);
                 b.active = false;
             }
@@ -60,21 +60,16 @@ public abstract class OverlayContainer extends MultiElementContainer<IOverlayPar
     @Override
     public void closeOverlay(OverlayContainer overlay) {
         if (this.overlay != null && this.overlay == overlay) {
-            for (AbstractButtonWidget b : overlay.getButtons()) {
+            for (GuiButton b : overlay.getButtons()) {
                 removeButton(b);
             }
-            for (AbstractButtonWidget b : overlay.savedBtnStates.keySet()) {
+            for (GuiButton b : overlay.savedBtnStates.keySet()) {
                 b.active = overlay.savedBtnStates.get(b);
             }
             overlay.onClose();
             this.overlay = null;
         }
         else parent.closeOverlay(overlay);
-    }
-    
-    @Override
-    public void setFocused(@Nullable Element focused) {
-        parent.setFocused(focused);
     }
     
     public void onClick(double mouseX, double mouseY, int button) {
@@ -113,8 +108,8 @@ public abstract class OverlayContainer extends MultiElementContainer<IOverlayPar
     
     @Override
     public void render(int mouseX, int mouseY, float delta) {
-        for (AbstractButtonWidget btn : buttons) {
-            btn.render(mouseX, mouseY, delta);
+        for (GuiButton btn : buttons) {
+            btn.render(mc, mouseX, mouseY);
         }
         if (this.overlay != null) this.overlay.render(mouseX, mouseY, delta);
     }

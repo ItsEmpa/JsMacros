@@ -1,9 +1,8 @@
 package xyz.wagyourtail.jsmacros.client.mixins.events;
 
-import net.minecraft.client.gui.screen.ingame.ContainerScreen;
-import net.minecraft.client.gui.screen.ingame.CreativeInventoryScreen;
-import net.minecraft.container.Slot;
-import net.minecraft.container.SlotActionType;
+import net.minecraft.client.gui.inventory.GuiContainer;
+import net.minecraft.client.gui.inventory.GuiContainerCreative;
+import net.minecraft.inventory.Slot;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,7 +14,7 @@ import xyz.wagyourtail.jsmacros.client.api.event.impl.EventDropSlot;
 import java.lang.reflect.Field;
 import java.util.Arrays;
 
-@Mixin(CreativeInventoryScreen.class)
+@Mixin(GuiContainerCreative.class)
 public abstract class MixinCreativeInventoryScreen {
 
     @Unique
@@ -58,14 +57,14 @@ public abstract class MixinCreativeInventoryScreen {
     }
 
     @Inject(method = "onMouseClick", at = @At("HEAD"), cancellable = true)
-    private void beforeMouseClick(Slot slot, int slotId, int button, SlotActionType actionType, CallbackInfo ci) {
+    private void beforeMouseClick(Slot slot, int slotId, int button, int actionType, CallbackInfo ci) {
         if (slot != null) slotId = getSlotFromCreativeSlot(slot).id;
-        EventClickSlot event = new EventClickSlot((ContainerScreen<?>) (Object) this, actionType.ordinal(), button, slotId);
+        EventClickSlot event = new EventClickSlot((GuiContainer) (Object) this, actionType, button, slotId);
         if (event.cancel) {
             ci.cancel();
         }
-        if (actionType == SlotActionType.THROW || slotId == -999) {
-            EventDropSlot eventDrop = new EventDropSlot((ContainerScreen<?>) (Object) this, slotId, button == 1);
+        if (actionType == 4 || slotId == -999) {
+            EventDropSlot eventDrop = new EventDropSlot((GuiContainer) (Object) this, slotId, button == 1);
             if (eventDrop.cancel) {
                 ci.cancel();
             }
