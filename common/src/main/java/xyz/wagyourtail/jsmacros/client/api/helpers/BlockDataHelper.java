@@ -77,7 +77,9 @@ public class BlockDataHelper extends BaseHelper<BlockState> {
      */
     public NBTElementHelper<?> getNBT() {
         if (e == null) return null;
-        return NBTElementHelper.resolve(e.createNbt());
+        NbtCompound nbt = new NbtCompound();
+        e.writeNbt(nbt);
+        return NBTElementHelper.resolve(nbt);
     }
     
     /**
