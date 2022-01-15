@@ -3,24 +3,19 @@ package xyz.wagyourtail.jsmacros.forge.client;
 import net.minecraft.client.MinecraftClient;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.TickEvent;
+import net.minecraftforge.fml.ExtensionPoint;
 import net.minecraftforge.fml.ModLoadingContext;
+import net.minecraftforge.fml.client.registry.ClientRegistry;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.fmlclient.ConfigGuiHandler;
-import net.minecraftforge.fmlclient.registry.ClientRegistry;
-import org.jetbrains.annotations.Nullable;
 import xyz.wagyourtail.jsmacros.client.JsMacros;
 import xyz.wagyourtail.jsmacros.client.api.classes.CommandBuilder;
 import xyz.wagyourtail.jsmacros.client.tick.TickBasedEvents;
 import xyz.wagyourtail.jsmacros.forge.client.api.classes.CommandBuilderForge;
 
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.URL;
-import java.util.Enumeration;
 
 @Mod(JsMacros.MOD_ID)
 public class JsMacrosForge {
@@ -32,10 +27,12 @@ public class JsMacrosForge {
 
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitialize);
         FMLJavaModLoadingContext.get().getModEventBus().addListener(this::onInitializeClient);
-        ModLoadingContext.get().registerExtensionPoint(ConfigGuiHandler.ConfigGuiFactory.class, () -> new ConfigGuiHandler.ConfigGuiFactory((mc, parent) -> {
+        ModLoadingContext.get().registerExtensionPoint(ExtensionPoint.CONFIGGUIFACTORY, () -> (mc, parent) -> {
             JsMacros.prevScreen.setParent(parent);
             return JsMacros.prevScreen;
-        }));
+        });
+
+        // needs to be earlier because forge does this too late and Core.instance ends up null for first sound event
         JsMacros.onInitialize();
     }
 
@@ -47,7 +44,6 @@ public class JsMacrosForge {
         ClientRegistry.registerKeyBinding(JsMacros.keyBinding);
 
         // load fabric-style plugins
-        Thread.currentThread().setContextClassLoader(new ShimClassLoader());
         FakeFabricLoader.instance.loadEntries();
     }
 
@@ -61,71 +57,6 @@ public class JsMacrosForge {
         JsMacros.onInitializeClient();
 
         // load fabric-style plugins
-        Thread.currentThread().setContextClassLoader(new ShimClassLoader());
         FakeFabricLoader.instance.loadClientEntries();
-    }
-
-
-    public static class CombineClassLoader extends ClassLoader {
-        ClassLoader a;
-        ClassLoader b;
-
-        public CombineClassLoader(ClassLoader a, ClassLoader b) {
-            this.a = a;
-            this.b = b;
-        }
-
-        @Override
-        public Class<?> loadClass(String name) throws ClassNotFoundException {
-            try {
-                return a.loadClass(name);
-            } catch (ClassNotFoundException e) {
-                return b.loadClass(name);
-            }
-        }
-
-        @Override
-        public Enumeration<URL> getResources(String name) throws IOException {
-            try {
-                return a.getResources(name);
-            } catch (IOException e) {
-                return b.getResources(name);
-            }
-        }
-
-        @Nullable
-        @Override
-        public InputStream getResourceAsStream(String name) {
-            InputStream s = a.getResourceAsStream(name);
-            if (s == null) {
-                return b.getResourceAsStream(name);
-            }
-            return s;
-        }
-
-        @Nullable
-        @Override
-        public URL getResource(String name) {
-            URL s = a.getResource(name);
-            if (s == null) {
-                return b.getResource(name);
-            }
-            return s;
-        }
-    }
-
-    public static class ShimClassLoader extends ClassLoader {
-        public ShimClassLoader() {
-            super(ShimClassLoader.class.getClassLoader());
-        }
-
-        @Override
-        public Class<?> loadClass(String name) throws ClassNotFoundException {
-            try {
-                return super.loadClass(name);
-            } catch (StringIndexOutOfBoundsException e) {
-                throw new ClassNotFoundException();
-            }
-        }
     }
 }

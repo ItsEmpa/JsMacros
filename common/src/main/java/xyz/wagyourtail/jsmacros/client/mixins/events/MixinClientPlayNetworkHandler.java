@@ -1,6 +1,7 @@
 package xyz.wagyourtail.jsmacros.client.mixins.events;
 
 import net.minecraft.client.MinecraftClient;
+import net.minecraft.client.gui.hud.ClientBossBar;
 import net.minecraft.client.network.ClientPlayNetworkHandler;
 import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.world.ClientWorld;
@@ -19,7 +20,7 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
-import xyz.wagyourtail.jsmacros.client.access.BossBarConsumer;
+import xyz.wagyourtail.jsmacros.client.access.IBossBarHud;
 import xyz.wagyourtail.jsmacros.client.api.event.impl.*;
 
 import java.util.HashSet;
@@ -43,8 +44,8 @@ class MixinClientPlayNetworkHandler {
     private Map<UUID, PlayerListEntry> playerListEntries;
 
 
-    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;showsDeathScreen()Z"), method="onDeathMessage", cancellable = true)
-    private void onDeath(DeathMessageS2CPacket packet, CallbackInfo info) {
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/network/ClientPlayerEntity;showsDeathScreen()Z"), method="onCombatEvent", cancellable = true)
+    private void onDeath(final CombatEventS2CPacket packet, CallbackInfo info) {
         new EventDeath();
     }
 
@@ -53,25 +54,27 @@ class MixinClientPlayNetworkHandler {
 
     @Inject(at = @At("HEAD"), method = "onPlayerList")
     public void onPlayerList(PlayerListS2CPacket packet, CallbackInfo info) {
-        if (this.client.isOnThread()) {
-            PlayerListS2CPacket.Action action = packet.getAction();
-            if (action == PlayerListS2CPacket.Action.ADD_PLAYER) {
-                for (Entry e : packet.getEntries()) {
-                    synchronized (newPlayerEntries) {
-                        if (playerListEntries.get(e.getProfile().getId()) == null) {
-                            newPlayerEntries.add(e.getProfile().getId());
+        if (this.client.isOnThread())
+            switch (packet.getAction()) {
+                case ADD_PLAYER:
+                    for (Entry e : packet.getEntries()) {
+                        synchronized (newPlayerEntries) {
+                            if (playerListEntries.get(e.getProfile().getId()) == null) {
+                                newPlayerEntries.add(e.getProfile().getId());
+                            }
                         }
                     }
-                }
-            } else if (action == PlayerListS2CPacket.Action.REMOVE_PLAYER) {
-                for (Entry e : packet.getEntries()) {
-                    if (playerListEntries.get(e.getProfile().getId()) != null) {
-                        PlayerListEntry p = playerListEntries.get(e.getProfile().getId());
-                        new EventPlayerLeave(e.getProfile().getId(), p);
+                    return;
+                case REMOVE_PLAYER:
+                    for (Entry e : packet.getEntries()) {
+                        if (playerListEntries.get(e.getProfile().getId()) != null) {
+                            PlayerListEntry p = playerListEntries.get(e.getProfile().getId());
+                            new EventPlayerLeave(e.getProfile().getId(), p);
+                        }
                     }
-                }
+                    return;
+                default:
             }
-        }
     }
 
     @Inject(at = @At("TAIL"), method = "onPlayerList")
@@ -90,25 +93,53 @@ class MixinClientPlayNetworkHandler {
 
     @Inject(at = @At("TAIL"), method = "onTitle")
     public void onTitle(TitleS2CPacket packet, CallbackInfo info) {
-        if (packet.getTitle() != null)
-            new EventTitle("TITLE", packet.getTitle());
-    }
-
-    @Inject(at = @At("TAIL"), method = "onSubtitle")
-    public void onSubtitle(SubtitleS2CPacket packet, CallbackInfo ci) {
-        if (packet.getSubtitle() != null)
-            new EventTitle("SUBTITLE", packet.getSubtitle());
-    }
-
-    @Inject(at = @At("TAIL"), method = "onOverlayMessage")
-    public void onOverlayMessage(OverlayMessageS2CPacket packet, CallbackInfo ci) {
-        if (packet.getMessage() != null)
-            new EventTitle("ACTIONBAR", packet.getMessage());
+        String type = null;
+        switch(packet.getAction()) {
+            case TITLE:
+                type = "TITLE";
+                break;
+            case SUBTITLE:
+                type = "SUBTITLE";
+                break;
+            case ACTIONBAR:
+                type = "ACTIONBAR";
+                break;
+            default:
+                break;
+        }
+        if (type != null && packet.getText() != null) {
+            new EventTitle(type, packet.getText());
+        }
     }
 
     @Inject(at = @At("TAIL"), method="onBossBar")
     public void onBossBar(BossBarS2CPacket packet, CallbackInfo info) {
-        packet.accept(new BossBarConsumer());
+        String type = null;
+        switch(packet.getType()) {
+            case ADD:
+                type = "ADD";
+                break;
+            case REMOVE:
+                type = "REMOVE";
+                break;
+            case UPDATE_NAME:
+                type = "UPDATE_NAME";
+                break;
+            case UPDATE_PCT:
+                type = "UPDATE_PERCENT";
+                break;
+            case UPDATE_PROPERTIES:
+                type = "UPDATE_PROPERTIES";
+                break;
+            case UPDATE_STYLE:
+                type = "UPDATE_STYLE";
+                break;
+            default:
+                break;
+        }
+        ClientBossBar bossBar = packet.getType() == BossBarS2CPacket.Type.REMOVE ? null :
+            ((IBossBarHud) client.inGameHud.getBossBarHud()).jsmacros_GetBossBars().get(packet.getUuid());
+        new EventBossbar(type, packet.getUuid(), bossBar);
     }
 
 
@@ -133,7 +164,7 @@ class MixinClientPlayNetworkHandler {
 
     @Inject(at = @At("TAIL"), method="onChunkData")
     public void onChunkData(ChunkDataS2CPacket packet, CallbackInfo info) {
-        new EventChunkLoad(packet.getX(), packet.getZ(), true);
+        new EventChunkLoad(packet.getX(), packet.getZ(), packet.isFullChunk());
     }
 
     @Inject(at = @At("TAIL"), method="onBlockUpdate")

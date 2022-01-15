@@ -7,7 +7,8 @@ import java.util.Comparator;
 import java.util.function.*;
 
 /**
- * Wraps most of the important functional interfaces.
+ * Wraps most of the important functional interfaces. (see the {@link xyz.wagyourtail.jsmacros.core.library.impl.FWrapper JavaWrapper} library for creating wrappers)
+ * @see xyz.wagyourtail.jsmacros.core.library.impl.FWrapper
  * 
  * @author Wagyourtail
  *

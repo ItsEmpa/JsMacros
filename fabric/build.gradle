@@ -44,13 +44,13 @@ dependencies {
     include "org.javassist:javassist:3.28.0-GA"
 
 
-    modImplementation("curse.maven:modmenu-308702:${project.modmenu_version}") {
+    modImplementation("curse.maven:modmenu-308702:${project.mod_menu_version}") {
         transitive = false
     }
     //for modmenu
-    modImplementation "net.fabricmc.fabric-api:fabric-screen-api-v1:1.0.4+155f865c13"
+    modImplementation "net.fabricmc.fabric-api:fabric-screen-api-v1:1.0.1+3cc0f0907d"
 
-    common(project(path: ":common", configuration: "namedElements")) { transitive false }
+    common(project(path: ":common", configuration: "dev")) { transitive false }
     shadowCommon(project(path: ":common", configuration: "transformProductionFabric")) { transitive false }
 }
 

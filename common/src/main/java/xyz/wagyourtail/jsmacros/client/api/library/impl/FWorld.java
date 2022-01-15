@@ -14,11 +14,9 @@ import net.minecraft.client.network.PlayerListEntry;
 import net.minecraft.client.sound.PositionedSoundInstance;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.PlayerEntity;
-import net.minecraft.nbt.NbtElement;
 import net.minecraft.network.ClientConnection;
 import net.minecraft.sound.SoundCategory;
 import net.minecraft.sound.SoundEvent;
-import net.minecraft.state.property.Property;
 import net.minecraft.text.Text;
 import net.minecraft.util.Identifier;
 import net.minecraft.util.Util;
@@ -28,7 +26,6 @@ import net.minecraft.util.registry.Registry;
 import net.minecraft.world.LightType;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.ChunkSection;
-import xyz.wagyourtail.Pair;
 import xyz.wagyourtail.jsmacros.client.access.IBossBarHud;
 import xyz.wagyourtail.jsmacros.client.access.IPlayerListHud;
 import xyz.wagyourtail.jsmacros.client.api.helpers.*;
@@ -43,7 +40,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -157,8 +153,8 @@ public class FWorld extends BaseLibrary {
      */
     public List<PositionCommon.Pos3D> findBlocksMatching(String id, int chunkrange) {
         assert mc.player != null;
-        int playerChunkX = mc.player.getBlockX() >> 4;
-        int playerChunkZ = mc.player.getBlockZ() >> 4;
+        int playerChunkX = (int) mc.player.getX() >> 4;
+        int playerChunkZ = (int) mc.player.getZ() >> 4;
         return findBlocksMatchingInternal(playerChunkX, playerChunkZ, s -> Registry.BLOCK.getId(s).toString().equals(id), null, chunkrange);
     }
 
@@ -172,8 +168,8 @@ public class FWorld extends BaseLibrary {
      */
     public List<PositionCommon.Pos3D> findBlocksMatching(List<String> ids, int chunkrange) {
         assert mc.player != null;
-        int playerChunkX = mc.player.getBlockX() >> 4;
-        int playerChunkZ = mc.player.getBlockZ() >> 4;
+        int playerChunkX = (int) mc.player.getX() >> 4;
+        int playerChunkZ = (int) mc.player.getZ() >> 4;
         Set<String> ids2 = new HashSet<>(ids);
         return findBlocksMatchingInternal(playerChunkX, playerChunkZ, s -> ids2.contains(Registry.BLOCK.getId(s).toString()), null, chunkrange);
     }
@@ -205,8 +201,8 @@ public class FWorld extends BaseLibrary {
     public List<PositionCommon.Pos3D> findBlocksMatching(MethodWrapper<String, Object, Boolean, ?> idFilter, MethodWrapper<Map<String, String>, Object, Boolean, ?> nbtFilter, int chunkrange) {
         if (idFilter == null) throw new IllegalArgumentException("idFilter cannot be null");
         assert mc.player != null;
-        int playerChunkX = mc.player.getBlockX() >> 4;
-        int playerChunkZ = mc.player.getBlockZ() >> 4;
+        int playerChunkX = (int) mc.player.getX() >> 4;
+        int playerChunkZ = (int) mc.player.getZ() >> 4;
         return findBlocksMatching(playerChunkX, playerChunkZ, idFilter, nbtFilter, chunkrange);
     }
 
@@ -244,7 +240,6 @@ public class FWorld extends BaseLibrary {
 
     private List<PositionCommon.Pos3D> findBlocksMatchingInternal(List<ChunkPos> pos, Function<Block, Boolean> stateFilter, Function<BlockState, Boolean> entityFilter) {
         assert mc.world != null;
-        int minY = mc.world.getDimension().getMinimumY();
 
         return pos.stream().flatMap(c -> {
             if (!mc.world.isChunkLoaded(c.x, c.z)) {
@@ -273,10 +268,10 @@ public class FWorld extends BaseLibrary {
                     if (stateFilter.apply(state.getBlock())) {
                         if (entityFilter != null) {
                             if (entityFilter.apply(state)) {
-                                return new PositionCommon.Pos3D(c.x << 4 | x, y + (i << 4) + minY, c.z << 4 | z);
+                                return new PositionCommon.Pos3D(c.x << 4 | x, y + (i << 4), c.z << 4 | z);
                             }
                         } else {
-                            return new PositionCommon.Pos3D(c.x << 4 | x, y + (i << 4) + minY, c.z << 4 | z);
+                            return new PositionCommon.Pos3D(c.x << 4 | x, y + (i << 4), c.z << 4 | z);
                         }
                     }
                     return null;
@@ -535,7 +530,7 @@ public class FWorld extends BaseLibrary {
      * @return text helper for the top part of the tab list (above the players)
      */
     public TextHelper getTabListHeader() {
-        Text header = ((IPlayerListHud)mc.inGameHud.getPlayerListHud()).jsmacros_getHeader();
+        Text header = ((IPlayerListHud)mc.inGameHud.getPlayerListWidget()).jsmacros_getHeader();
         if (header != null) return new TextHelper(header);
         return null;
     }
@@ -545,7 +540,7 @@ public class FWorld extends BaseLibrary {
      * @return  text helper for the bottom part of the tab list (below the players)
      */
     public TextHelper getTabListFooter() {
-        Text footer = ((IPlayerListHud)mc.inGameHud.getPlayerListHud()).jsmacros_getFooter();
+        Text footer = ((IPlayerListHud)mc.inGameHud.getPlayerListWidget()).jsmacros_getFooter();
         if (footer != null) return new TextHelper(footer);
         return null;
     }

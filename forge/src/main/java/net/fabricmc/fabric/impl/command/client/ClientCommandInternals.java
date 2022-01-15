@@ -37,6 +37,7 @@ import com.mojang.brigadier.exceptions.BuiltInExceptionProvider;
 import com.mojang.brigadier.exceptions.CommandExceptionType;
 import com.mojang.brigadier.exceptions.CommandSyntaxException;
 import com.mojang.brigadier.tree.CommandNode;
+import net.fabricmc.fabric.mixin.command.HelpCommandAccessor;
 import net.minecraft.server.command.HelpCommand;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
@@ -169,7 +170,7 @@ public final class ClientCommandInternals {
         List<ParsedCommandNode<FabricClientCommandSource>> nodes = parseResults.getContext().getNodes();
 
         if (nodes.isEmpty()) {
-            throw ((HelpCommandAccessor) new HelpCommand()).getFailedException().create();
+            throw HelpCommandAccessor.getFailedException().create();
         }
 
         return executeHelp(Iterables.getLast(nodes).getNode(), context);

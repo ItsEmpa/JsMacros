@@ -32,7 +32,7 @@ import net.fabricmc.fabric.impl.command.client.ClientCommandInternals;
  */
 @Mixin(ClientPlayerEntity.class)
 abstract class ClientPlayerEntityMixin {
-    @Inject(method = {"sendChatMessage", "m_108739_"}, at = @At("HEAD"), cancellable = true)
+    @Inject(method = {"sendChatMessage"}, at = @At("HEAD"), cancellable = true)
     private void onSendChatMessage(String message, CallbackInfo info) {
         if (ClientCommandInternals.executeCommand(message)) {
             info.cancel();
