@@ -1,7 +1,7 @@
 package xyz.wagyourtail.jsmacros.client.api.helpers;
 
-import net.minecraft.text.LiteralText;
-import net.minecraft.text.Text;
+import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.IChatComponent;
 import xyz.wagyourtail.jsmacros.core.MethodWrapper;
 import xyz.wagyourtail.jsmacros.core.helpers.BaseHelper;
 
@@ -69,9 +69,9 @@ public class TextHelper extends BaseHelper<IChatComponent> {
         visit_internal(base, visitor);
     }
 
-    private static void visit_internal(Text text, BiConsumer<StyleHelper, String> visitor) {
+    private static void visit_internal(IChatComponent text, BiConsumer<StyleHelper, String> visitor) {
         visitor.accept(new StyleHelper(text.getStyle()), text.asString());
-        for (Text sibling : text.getSiblings()) {
+        for (IChatComponent sibling : text.getSiblings()) {
             visit_internal(sibling, visitor);
         }
     }

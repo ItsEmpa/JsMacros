@@ -23,6 +23,16 @@ public class MixinStyle implements IStyle {
         return (ChatStyle)(Object)this;
     }
 
+    @Override
+    public boolean hasCustomColor() {
+        return hasCustomColor;
+    }
+
+    @Override
+    public int getCustomColor() {
+        return customColor;
+    }
+
     @Inject(method = "copy", at = @At("RETURN"), cancellable = true)
     public void copyCustomColor(CallbackInfoReturnable<ChatStyle> cir) {
         if (this.hasCustomColor) {
