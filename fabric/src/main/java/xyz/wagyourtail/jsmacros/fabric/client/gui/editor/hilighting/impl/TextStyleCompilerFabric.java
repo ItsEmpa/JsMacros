@@ -4,7 +4,7 @@ import io.noties.prism4j.Prism4j;
 import net.minecraft.text.Style;
 import org.jetbrains.annotations.NotNull;
 import xyz.wagyourtail.jsmacros.client.gui.editor.highlighting.impl.TextStyleCompiler;
-import xyz.wagyourtail.jsmacros.fabric.client.access.IStyle;
+import xyz.wagyourtail.jsmacros.client.access.IStyle;
 
 import java.util.Map;
 import java.util.Optional;

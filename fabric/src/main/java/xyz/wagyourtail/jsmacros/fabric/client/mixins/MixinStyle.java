@@ -7,12 +7,12 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
-import xyz.wagyourtail.jsmacros.fabric.client.access.IStyle;
+import xyz.wagyourtail.jsmacros.client.access.IStyle;
 
 @Mixin(Style.class)
 public class MixinStyle implements IStyle {
     @Unique boolean hasCustomColor = false;
-    @Unique int customColor;
+    @Unique int customColor = -1;
     
     @Override
     public Style setCustomColor(int color) {
@@ -20,7 +20,17 @@ public class MixinStyle implements IStyle {
         this.customColor = color;
         return (Style)(Object)this;
     }
-    
+
+    @Override
+    public boolean hasCustomColor() {
+        return hasCustomColor;
+    }
+
+    @Override
+    public int getCustomColor() {
+        return customColor;
+    }
+
     @Inject(method = "copy", at = @At("RETURN"), cancellable = true)
     public void copyCustomColor(CallbackInfoReturnable<Style> cir) {
         if (this.hasCustomColor) {
